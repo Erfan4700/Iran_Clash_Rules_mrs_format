@@ -39,16 +39,16 @@ def clean_domain(line):
     return None
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS
+# 1. IRAN IP-CIDRS & ASNS (SEPARATE IPV4 & IPV6 COLLAPSE)
 # ==============================================================================
 print("[-] Step 1: Fetching Iranian IP-CIDRs...")
-# Use HTTP for RIPE (HTTPS causes SSL error on ftp.ripe.net) + GitHub Mirrors
 ripe_urls = [
     "http://ftp.ripe.net/ripe/stats/delegated-ripencc-latest",
     "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt"
 ]
 
-networks = []
+ipv4_nets = []
+ipv6_nets = []
 asns = []
 
 ripe_raw = fetch_data(ripe_urls[0])
@@ -62,30 +62,51 @@ if ripe_raw:
                 try:
                     first_ip = ipaddress.IPv4Address(parts[3])
                     last_ip = first_ip + (int(parts[4]) - 1)
-                    networks.extend(ipaddress.summarize_range(first_ip, last_ip))
+                    ipv4_nets.extend(ipaddress.summarize_range(first_ip, last_ip))
+                except Exception:
+                    pass
+            elif parts[2] == 'ipv6':
+                try:
+                    ipv6_nets.append(ipaddress.IPv6Network(f"{parts[3]}/{parts[4]}", strict=False))
                 except Exception:
                     pass
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# If RIPE fails, fetch directly from mirror
-if not networks:
+# If primary RIPE failed, parse from fallback mirror
+if not ipv4_nets:
     print("[!] Using fallback mirror for Iran CIDRs...")
     mirror_raw = fetch_data(ripe_urls[1])
     for line in mirror_raw.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
             try:
-                networks.append(ipaddress.ip_network(line, strict=False))
+                net = ipaddress.ip_network(line, strict=False)
+                if net.version == 4:
+                    ipv4_nets.append(net)
+                else:
+                    ipv6_nets.append(net)
             except Exception:
                 pass
 
-collapsed_networks = list(ipaddress.collapse_addresses(networks))
-print(f"[+] Total CIDRs: {len(collapsed_networks)} | Total ASNs: {len(asns)}")
+# Separate collapse prevents TypeError: IPv4 vs IPv6
+collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets)) if ipv4_nets else []
+collapsed_v6 = list(ipaddress.collapse_addresses(ipv6_nets)) if ipv6_nets else []
+all_collapsed = collapsed_v4 + collapsed_v6
+
+print(f"[+] Total CIDRs: {len(all_collapsed)} (IPv4: {len(collapsed_v4)}, IPv6: {len(collapsed_v6)}) | Total ASNs: {len(asns)}")
 
 with open(f"{OUTPUT_DIR}/ircidr.txt", "w", encoding="utf-8") as f:
-    for net in collapsed_networks:
+    for net in all_collapsed:
         f.write(f"{net}\n")
+
+# Fallback ASNs if RIPE was empty
+if not asns:
+    asn_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt")
+    for line in asn_raw.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
 
 with open(f"{OUTPUT_DIR}/irasn.txt", "w", encoding="utf-8") as f:
     for asn in sorted(set(asns)) if asns else ["IP-ASN,58224", "IP-ASN,197207"]:
