@@ -2,6 +2,7 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
+    # Runs twice a day (03:00 and 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -29,7 +30,8 @@ jobs:
       - name: Download Latest Mihomo Core
         run: |
           echo "Downloading Mihomo Core..."
-          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64-compatible.*\.gz\"" | head -n 1 | cut -d '"' -f 4)
+          MIHOMO_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64-compatible.*\.gz\"" | head -n 1 | cut -d '"' -f 4)
           curl -sL "$MIHOMO_URL" -o mihomo.gz
           gzip -d mihomo.gz
           chmod +x mihomo
