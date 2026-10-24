@@ -7,6 +7,27 @@ import urllib.request
 OUTPUT_DIR = "output_text"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+
+def clean_domain(line):
+    """Sanitize lines to extract pure domain names for Mihomo."""
+    line = line.strip().lower()
+    if not line or line.startswith(('#', '!', ';')):
+        return None
+    # Remove Adblock syntax like ||example.com^
+    line = re.sub(r'^[\|]+', '', line)
+    line = re.sub(r'[\^/].*$', '', line)
+    # Remove protocol prefix
+    line = re.sub(r'^https?://', '', line)
+    # Remove leading dot or wildcard
+    line = re.sub(r'^\+\.?', '', line)
+    line = re.sub(r'^\*\.?', '', line)
+    line = re.sub(r'^\.', '', line)
+    # Extract only valid domains
+    if re.match(r'^[a-z0-9.-]+\.[a-z]{2,}$', line):
+        return line
+    return None
+
 # ------------------------------------------------------------------------------
 # 1. FETCH & PROCESS IRAN IP-CIDRS (AGGREGATED & MERGED VIA RIPE NCC)
 # ------------------------------------------------------------------------------
@@ -16,20 +37,18 @@ networks = []
 asns = []
 
 try:
-    req = urllib.request.Request(ripe_url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req) as resp:
+    req = urllib.request.Request(ripe_url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=30) as resp:
         for line in resp.read().decode('utf-8', errors='ignore').splitlines():
             if not line or line.startswith('#'):
                 continue
             parts = line.split('|')
             if len(parts) >= 7 and parts[1] == 'IR':
-                # Process IPv4
                 if parts[2] == 'ipv4':
                     start_ip = parts[3]
                     count = int(parts[4])
                     prefix_len = 32 - int(math.log2(count))
                     networks.append(ipaddress.ip_network(f"{start_ip}/{prefix_len}"))
-                # Process Autonomous System Numbers (ASN)
                 elif parts[2] == 'asn':
                     asn_num = parts[3]
                     asns.append(f"IP-ASN,{asn_num}")
@@ -60,12 +79,12 @@ iran_domains = set()
 iran_domains.add("+.ir")
 
 try:
-    req = urllib.request.Request(domains_url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req) as resp:
+    req = urllib.request.Request(domains_url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=30) as resp:
         for line in resp.read().decode('utf-8', errors='ignore').splitlines():
-            d = line.strip().lower()
-            if d and not d.startswith('#') and not d.endswith('.ir'):
-                iran_domains.add(f"+.{d}")
+            domain = clean_domain(line)
+            if domain and not domain.endswith('.ir'):
+                iran_domains.add(f"+.{domain}")
 
     with open(f"{OUTPUT_DIR}/ir.txt", "w", encoding="utf-8") as f:
         for d in sorted(iran_domains):
@@ -80,7 +99,6 @@ except Exception as e:
 print("[-] Fetching Persian Adblocker and applying payment gateway safety filters...")
 ads_url = "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt"
 
-# Critical domestic payment, banking & OTP domains that must NEVER be blocked
 UNBREAK_WHITELIST = {
     "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
     "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "payping.net",
@@ -89,17 +107,15 @@ UNBREAK_WHITELIST = {
 
 ad_domains = set()
 try:
-    req = urllib.request.Request(ads_url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req) as resp:
+    req = urllib.request.Request(ads_url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=30) as resp:
         for line in resp.read().decode('utf-8', errors='ignore').splitlines():
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
             parts = line.split()
-            domain = parts[-1].lower()
-            
-            # Apply Safety Layer: skip if it matches any payment gateway
-            if not any(safe in domain for safe in UNBREAK_WHITELIST):
+            domain = clean_domain(parts[-1])
+            if domain and not any(safe in domain for safe in UNBREAK_WHITELIST):
                 ad_domains.add(domain)
 
     with open(f"{OUTPUT_DIR}/ads.txt", "w", encoding="utf-8") as f:
@@ -114,18 +130,18 @@ except Exception as e:
 # ------------------------------------------------------------------------------
 print("[-] Compiling domestic phishing blocklist...")
 phishing_sources = [
-    "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter.txt"
+    "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter-domains.txt"
 ]
 
 phishing_domains = set()
 for url in phishing_sources:
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as resp:
+        req = urllib.request.Request(url, headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=30) as resp:
             for line in resp.read().decode('utf-8', errors='ignore').splitlines():
-                d = line.strip().lower()
-                if d and not d.startswith('#'):
-                    phishing_domains.add(d)
+                domain = clean_domain(line)
+                if domain:
+                    phishing_domains.add(domain)
     except Exception as e:
         print(f"[!] Error fetching {url}: {e}")
 
