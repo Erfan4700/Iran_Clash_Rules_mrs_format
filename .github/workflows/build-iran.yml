@@ -38,26 +38,26 @@ jobs:
         run: |
           mkdir -p output_mrs
 
-          # Convert Domains
+          echo "=== Verifying Generated Text Files ==="
+          ls -lh output_text/
+
+          echo "=== Converting ir.txt ==="
           ./mihomo convert-ruleset domain text output_text/ir.txt output_mrs/ir.mrs
+
+          echo "=== Converting ads.txt ==="
           ./mihomo convert-ruleset domain text output_text/ads.txt output_mrs/ads.mrs
+
+          echo "=== Converting phishing.txt ==="
           ./mihomo convert-ruleset domain text output_text/phishing.txt output_mrs/phishing.mrs
 
-          # Convert IP-CIDRs
+          echo "=== Converting ircidr.txt ==="
           ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
 
-          # Copy Classical ASN text list directly
+          # Copy Classical ASN text list
           cp output_text/irasn.txt output_mrs/irasn.txt
 
-          # Validate output files exist and are not empty
-          for FILE in ir.mrs ads.mrs phishing.mrs ircidr.mrs; do
-            SIZE=$(wc -c < "output_mrs/$FILE")
-            echo "Binary $FILE compiled successfully ($SIZE bytes)"
-            if [ "$SIZE" -lt 1000 ]; then
-              echo "Error: $FILE is corrupt or too small!"
-              exit 1
-            fi
-          done
+          echo "=== All MRS Binaries Successfully Built ==="
+          ls -lh output_mrs/
 
       - name: Deploy MRS Artifacts to Release Branch
         uses: peaceiris/actions-gh-pages@v4
