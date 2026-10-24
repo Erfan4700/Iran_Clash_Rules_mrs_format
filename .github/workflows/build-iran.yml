@@ -71,7 +71,7 @@ jobs:
           cp output_text/irasn.txt output_mrs/irasn.txt
           cp output_text/apps.txt output_mrs/apps.txt
 
-          echo "=== All MRS and Classical Artifacts Ready ==="
+          echo "=== All MRS and Classical Artifacts Successfully Generated ==="
           ls -lh output_mrs/
 
       - name: Deploy MRS Artifacts to Release Branch
@@ -91,7 +91,6 @@ jobs:
           RELEASE_TITLE="Iran Ruleset Engine (Rolling Update: $(date -u +'%Y-%m-%d %H:%M UTC'))"
           RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and Android package routing."
 
-          # Check if the release exists; update if it does, create if it doesn't
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "Updating existing release..."
             gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
@@ -101,15 +100,16 @@ jobs:
             gh release create "$RELEASE_TAG" output_mrs/* \
               --title "$RELEASE_TITLE" \
               --notes "$RELEASE_NOTES" \
+              --target main \
               --latest
           fi
 
       - name: Purge jsDelivr CDN Cache
         run: |
-          echo "Waiting 10 seconds for GitHub CDN sync..."
-          sleep 10
+          echo "Waiting 25 seconds for GitHub RAW storage propagation..."
+          sleep 25
           for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt apps.txt; do
             echo "Purging CDN cache for $FILE..."
             STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
-            echo "Purge status: $STATUS"
+            echo "Purge status for $FILE: $STATUS"
           done
