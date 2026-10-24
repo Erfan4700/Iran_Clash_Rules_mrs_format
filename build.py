@@ -115,32 +115,10 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# فال‌بک نجات اضطراری در صورت قطعی کل سرورهای اروپایی
-if not ipv4_nets:
-    print("[!] Upstream RIR mirrors failed. Engaging emergency fallback mirror...")
-    fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt")
-    for line in fallback_cidrs.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            try:
-                net = ipaddress.ip_network(line, strict=False)
-                if net.version == 4:
-                    ipv4_nets.append(net)
-                else:
-                    ipv6_nets.append(net)
-            except Exception:
-                pass
-
-if not asns:
-    fallback_asns = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt")
-    for line in fallback_asns.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
-
-# اگر باز هم خالی بود، برای جلوگیری از ساخت فایل معیوب بیلد متوقف شود
+# Failsafe: Abort immediately if authoritative RIR mirrors are unreachable
+# This preserves the intact, working build from the previous run
 if not ipv4_nets or not asns:
-    print("[X] FATAL ERROR: Both RIR and fallback mirrors failed. Aborting.")
+    print("[X] FATAL ERROR: Authoritative RIR mirrors (RIPE/APNIC) failed. Aborting to protect rule integrity.")
     sys.exit(1)
 
 collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
