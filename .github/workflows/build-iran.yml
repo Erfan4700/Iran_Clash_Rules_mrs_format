@@ -2,6 +2,7 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
+    # Runs twice a day (03:00 and 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -28,12 +29,21 @@ jobs:
 
       - name: Download Latest Mihomo Core
         run: |
-          echo "Downloading Mihomo Core..."
-          MIHOMO_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64-compatible.*\.gz\"" | head -n 1 | cut -d '"' -f 4)
+          echo "Fetching latest Mihomo release asset URL..."
+          MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-compatible-.*\\.gz$")) | .browser_download_url' | head -n 1)
+
+          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+            echo "[X] ERROR: Failed to obtain Mihomo download URL."
+            exit 1
+          fi
+
+          echo "Downloading from: $MIHOMO_URL"
           curl -sL "$MIHOMO_URL" -o mihomo.gz
           gzip -d mihomo.gz
           chmod +x mihomo
+          ./mihomo -v
 
       - name: Compile Text Lists to Binary MRS
         run: |
@@ -57,10 +67,11 @@ jobs:
           echo "=== Converting ircidr.txt ==="
           ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
 
-          # Copy Classical ASN text list
+          # Copy Classical text lists (ASN and Android Package Names)
           cp output_text/irasn.txt output_mrs/irasn.txt
+          cp output_text/apps.txt output_mrs/apps.txt
 
-          echo "=== All MRS Binaries Successfully Built ==="
+          echo "=== All MRS and Classical Artifacts Ready ==="
           ls -lh output_mrs/
 
       - name: Deploy MRS Artifacts to Release Branch
@@ -72,25 +83,32 @@ jobs:
           destination_dir: ./
           keep_files: false
 
-      - name: Create Official GitHub Release
+      - name: Update Official Rolling Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_TAG="v$(date -u +'%Y.%m.%d-%H%M')"
-          RELEASE_TITLE="Iran Ruleset Engine Update ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-          RELEASE_NOTES="Automated ruleset build with RIPE CIDR aggregation, Shaparak safety layers, and NSFW/Gambling filters."
+          RELEASE_TAG="release"
+          RELEASE_TITLE="Iran Ruleset Engine (Rolling Update: $(date -u +'%Y-%m-%d %H:%M UTC'))"
+          RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and Android package routing."
 
-          echo "Publishing GitHub Release: $RELEASE_TAG"
-          gh release create "$RELEASE_TAG" output_mrs/* \
-            --title "$RELEASE_TITLE" \
-            --notes "$RELEASE_NOTES" \
-            --latest
+          # Check if the release exists; update if it does, create if it doesn't
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Updating existing release..."
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+            gh release upload "$RELEASE_TAG" output_mrs/* --clobber
+          else
+            echo "Creating new rolling release..."
+            gh release create "$RELEASE_TAG" output_mrs/* \
+              --title "$RELEASE_TITLE" \
+              --notes "$RELEASE_NOTES" \
+              --latest
+          fi
 
       - name: Purge jsDelivr CDN Cache
         run: |
-          echo "Waiting 5 seconds for CDN propagation..."
-          sleep 5
-          for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt; do
+          echo "Waiting 10 seconds for GitHub CDN sync..."
+          sleep 10
+          for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt apps.txt; do
             echo "Purging CDN cache for $FILE..."
             STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
             echo "Purge status: $STATUS"
