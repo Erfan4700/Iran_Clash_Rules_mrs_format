@@ -23,7 +23,7 @@ An enterprise-grade, memory-optimized ruleset suite providing automated **Mihomo
 
 All files are hosted on the `release` branch and served through high-speed CDN edges:
 
-| Ruleset | Type | Size | Routing Action | Target Description | CDN URL |
+| Ruleset | Type | Live Size | Routing Action | Target Description | Fast CDN URL |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | **`ir.mrs`** | `domain` | ![ir Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ir.mrs?branch=release&label=&color=success) | `DIRECT` | Verified Iranian domains (`.ir` + validated commercial TLDs) | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ir.mrs) |
 | **`ircidr.mrs`** | `ipcidr` | ![ircidr Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ircidr.mrs?branch=release&label=&color=blue) | `DIRECT` | Collapsed, supernet-aggregated Iranian IPv4 & IPv6 blocks | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ircidr.mrs) |
@@ -80,16 +80,6 @@ This script acts as the master coordinator for **Clash Verge Rev** and **Mihomo 
 
 ---
 
-## 🎖️ Credits & Acknowledgements
-
-* **IP Allocations:** Data provided by [RIPE Network Coordination Centre](https://www.ripe.net/).
-* **Domestic Domains:** Seed data inspired by [@bootmortis](https://github.com/bootmortis) and the Iranian open-source community.
-* **Persian Ad Filters:** Seed data curated from [@MasterKia/PersianBlocker](https://github.com/MasterKia/PersianBlocker).
-* **Phishing Intelligence:** Sourced from [@curbengh/phishing-filter](https://github.com/curbengh/phishing-filter).
-* **Compiler Engine:** Powered by [Mihomo Core (MetaCubeX)](https://github.com/MetaCubeX/mihomo).
-
----
-
 ## 🌐 The Complete Ecosystem (Related Projects)
 
 This repository is part of a two-pillar, self-hosted routing & security suite for Mihomo / Clash:
@@ -100,8 +90,16 @@ This repository is part of a two-pillar, self-hosted routing & security suite fo
 
 ---
 
+## 🎖️ Credits & Acknowledgements
+
+* **IP Allocations:** Data provided by [RIPE Network Coordination Centre](https://www.ripe.net/).
+* **Domestic Domains:** Seed data inspired by [@bootmortis](https://github.com/bootmortis) and the Iranian open-source community.
+* **Persian Ad Filters:** Seed data curated from [@MasterKia/PersianBlocker](https://github.com/MasterKia/PersianBlocker).
+* **Phishing Intelligence:** Sourced from [@curbengh/phishing-filter](https://github.com/curbengh/phishing-filter).
+* **Compiler Engine:** Powered by [Mihomo Core (MetaCubeX)](https://github.com/MetaCubeX/mihomo).
+
+---
+
 ## 📄 License
 
 Distributed under the **MIT License**. Upstream intellectual property and data rights belong to their respective registries and maintainers.
-
-
