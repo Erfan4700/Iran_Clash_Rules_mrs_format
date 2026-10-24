@@ -256,87 +256,72 @@ with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
         f.write(f"{d}\n")
 
 # ==============================================================================
-# 6. IRANIAN APPS (AUTONOMOUS MASSIVE CRAWLER & CURATED CORE)
+# 6. IRANIAN APPS (MASSIVE HYBRID DATABASE: ANDROID PACKAGES & WINDOWS PROCESSES)
 # ==============================================================================
-print("[-] Step 6: Scraping and compiling massive domestic Android & Windows database...")
+print("[-] Step 6: Compiling massive Iranian Android (PACKAGE-NAME) & Windows (PROCESS-NAME) rules...")
 
-# ۱. هسته تضمین‌شده اپلیکیشن‌های حیاتی (بانک‌ها، تاکسی‌ها، صرافی‌ها، پیام‌رسان‌ها)
-CURATED_ANDROID_SEED = {
-    # تاکسی و لجستیک
+# ۱. هسته تضمین‌شده حیاتی
+ESSENTIAL_SEED = {
     "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
-    "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer", "com.alopeyk.courier",
-    "com.taxsee.taxsee", "neshan.maps", "ir.balad.maps",
-    # فروشگاه و خدمات
-    "com.digikala", "com.digikala.seller", "ir.divar", "com.sheypoor.mobile", "ir.torob",
-    "com.emalls", "com.basalam.app", "com.snappmarket", "com.zoodfood.android",
-    # مالی، بانکی و رمزارز
-    "market.nobitex", "net.nobitex", "ir.wallex.app", "com.abantether", "com.ramzinex.app", "ir.bitpin", "io.exir",
+    "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
+    "neshan.maps", "ir.balad.maps", "com.digikala", "ir.divar", "ir.torob", "com.emalls",
+    "market.nobitex", "net.nobitex", "ir.wallex.app", "com.abantether", "com.ramzinex.app", "ir.bitpin",
     "ir.tejaratbank.mobile", "com.bmi.mobilebank", "com.bmi.bam", "ir.sep.sesame", "ir.banksepah.mobilebank",
-    "ir.omidbank", "com.bsi.mobilebank", "ir.bpi.mobilebank", "com.bki.mobilebank", "ir.refah.mobilebank",
-    "com.maskan.mobilebank", "ir.samanpr.mobillet", "ir.sinabank.mobilebank", "com.ayandeh.kilid",
-    "ir.blu.banking", "ir.resalat.mb", "ir.zarinpal.android", "ir.payping.app", "com.asanpardakht",
-    # رسانه، فیلم و سرگرمی
-    "com.aparat.android", "com.saba.filimo", "ir.shatel.namava", "ir.filmnet.android", "ir.cinematicket.app",
-    "com.alibaba.android", "ir.flytoday", "com.pintapin", "com.jabama",
-    # پیام‌رسان و اپراتورها
-    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger", "ir.gap.im", "com.iGap",
-    "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel", "com.farsitel.bazaar", "ir.mservices.myket"
+    "ir.omidbank", "com.bsi.mobilebank", "ir.bpi.mobilebank", "ir.blu.banking", "ir.resalat.mb",
+    "com.aparat.android", "com.saba.filimo", "ir.shatel.namava", "ir.filmnet.android", "com.zoodfood.android",
+    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger",
+    "com.farsitel.bazaar", "ir.mservices.myket", "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel"
 }
 
-# پکیج‌هایی که هرگز نباید دایرکت شوند (برنامه‌های خارجی موجود در کافه‌بازار)
+# پکیج‌هایی که هرگز نباید دایرکت شوند (برنامه‌های خارجی یا حساس به تحریم)
 GLOBAL_EXCLUDES = {
-    "org.telegram.messenger", "com.whatsapp", "com.instagram.android",
-    "com.facebook.katana", "com.twitter.android", "com.google.android.youtube",
-    "com.google.android.gms", "com.android.chrome", "org.mozilla.firefox",
-    "com.spotify.music", "com.netflix.mediaclient"
+    "org.telegram.messenger", "com.whatsapp", "com.instagram.android", "com.facebook.katana",
+    "com.twitter.android", "com.google.android.youtube", "com.google.android.gms", "com.android.chrome",
+    "org.mozilla.firefox", "com.spotify.music", "com.netflix.mediaclient", "com.valvesoftware.android.steam.community"
 }
 
-scraped_packages = set(CURATED_ANDROID_SEED)
+compiled_packages = set(ESSENTIAL_SEED)
+
+# ۲. منابع بزرگ اپلیکیشن‌های آماده و پایش‌شده
+APP_UPSTREAM_URLS = [
+    # منبع اصلی سورس خام پکیج‌های چاکلت
+    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/main/apps.txt",
+    # سورس دیتابیس جامعه اندروید ایران
+    "https://raw.githubusercontent.com/SamadiPour/iran-android-apps/master/packages.txt"
+]
+
 PKG_REGEX = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$')
 
-# ۲. کراولر خودکار و مستقل از سرورهای کافه‌بازار (استخراج هزاران پکیج واقعی)
-try:
-    print("[*] Launching autonomous crawler on CafeBazaar official sitemaps...")
-    store_sitemap = "https://cafebazaar.ir/sitemap.xml"
-    sitemap_index = fetch_data(store_sitemap, timeout=30)
-    if sitemap_index:
-        # پیدا کردن ساب‌سایت‌مپ‌های برنامه‌ها
-        sub_maps = re.findall(r'https://cafebazaar\.ir/sitemaps/sitemap-app-\d+\.xml', sitemap_index)
-        # کراول ۵ سایت‌مپ اول اپلیکیشن‌ها (شامل هزاران برنامه)
-        for sm in sub_maps[:5]:
-            try:
-                sm_data = fetch_data(sm, timeout=35)
-                if sm_data:
-                    found = re.findall(r'/app/([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)+)', sm_data)
-                    for p in found:
-                        if p not in GLOBAL_EXCLUDES and PKG_REGEX.match(p) and len(p) < 90:
-                            scraped_packages.add(p)
-            except Exception:
-                pass
-except Exception as e:
-    print(f"[!] Live crawler notice: {e}. Falling back to extensive baseline.")
+for url in APP_UPSTREAM_URLS:
+    raw_apps = fetch_data(url, timeout=30)
+    if raw_apps:
+        for line in raw_apps.splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            # پاکسازی پیشوندهای احتمالی چاکلت یا فرمت‌های مختلف
+            pkg = line.replace("PROCESS-NAME,", "").replace("PACKAGE-NAME,", "").strip()
+            # اعتبارسنجی ساختار پکیج اندروید و عدم حضور در لیست سیاه دامنه‌های خارجی
+            if pkg not in GLOBAL_EXCLUDES and PKG_REGEX.match(pkg) and len(pkg) < 85:
+                compiled_packages.add(pkg)
 
-# ۳. فال‌بک تکمیلی به دیتابیس جامعه متن‌باز برای رسیدن به حداکثر جامعیت
-if len(scraped_packages) < 1000:
-    print("[!] Pulling massive community package baseline...")
-    community_repo = "https://raw.githubusercontent.com/SamadiPour/iran-android-apps/master/packages.txt"
-    comm_data = fetch_data(community_repo, timeout=30)
-    if comm_data:
-        for line in comm_data.splitlines():
-            pkg = line.replace("PACKAGE-NAME,", "").strip()
-            if pkg not in GLOBAL_EXCLUDES and PKG_REGEX.match(pkg) and len(pkg) < 90:
-                scraped_packages.add(pkg)
-
-# ۴. پروسس‌های دسکتاپ ویندوز
+# ۳. پروسس‌های بومی برنامه‌های دسکتاپ ویندوز
 WINDOWS_PROCESSES = [
     "Bale.exe", "Eitaa.exe", "EitaaDesktop.exe", "Rubika.exe",
     "Soroush.exe", "Gap.exe", "IDMan.exe", "Digikala.exe", "Aparat.exe"
 ]
 
+# ۴. ذخیره‌سازی باینری و استاندارد (همزمان PACKAGE-NAME برای اندروید و PROCESS-NAME برای چاکلت و ویندوز)
 with open(f"{OUTPUT_DIR}/apps.txt", "w", encoding="utf-8") as f:
-    for pkg in sorted(scraped_packages):
+    # الف: فرمت استاندارد برای اندروید (Clash for Android / FlClash)
+    for pkg in sorted(compiled_packages):
         f.write(f"PACKAGE-NAME,{pkg}\n")
+    # ب: سازگاری معکوس با چاکلت (برای کلاینت‌هایی که با PROCESS-NAME ست شده‌اند)
+    for pkg in sorted(compiled_packages):
+        f.write(f"PROCESS-NAME,{pkg}\n")
+    # ج: پروسس‌های اگزه ویندوز
     for proc in sorted(WINDOWS_PROCESSES):
         f.write(f"PROCESS-NAME,{proc}\n")
 
-print(f"[+] Successfully compiled {len(scraped_packages) + len(WINDOWS_PROCESSES)} total application rules (Android: {len(scraped_packages)}, Windows: {len(WINDOWS_PROCESSES)})")
+total_rules = (len(compiled_packages) * 2) + len(WINDOWS_PROCESSES)
+print(f"[+] Total Application Rules compiled: {total_rules} ({len(compiled_packages)} unique Apps covered for Android & Windows!)")
