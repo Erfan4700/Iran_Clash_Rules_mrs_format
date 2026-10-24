@@ -1,0 +1,93 @@
+name: Iran Rules to MRS Automated Builder
+
+on:
+  schedule:
+    - cron: '0 3,15 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Core Optimization Engine
+        run: python build.py
+
+      - name: Download Latest Mihomo Core
+        run: |
+          echo "Downloading Mihomo Core..."
+          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64-compatible.*\.gz\"" | head -n 1 | cut -d '"' -f 4)
+          curl -sL "$MIHOMO_URL" -o mihomo.gz
+          gzip -d mihomo.gz
+          chmod +x mihomo
+
+      - name: Compile Text Lists to Binary MRS
+        run: |
+          mkdir -p output_mrs
+
+          # Convert Domains
+          ./mihomo convert-ruleset domain text output_text/ir.txt output_mrs/ir.mrs
+          ./mihomo convert-ruleset domain text output_text/ads.txt output_mrs/ads.mrs
+          ./mihomo convert-ruleset domain text output_text/phishing.txt output_mrs/phishing.mrs
+
+          # Convert IP-CIDRs
+          ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
+
+          # Copy Classical ASN text list directly
+          cp output_text/irasn.txt output_mrs/irasn.txt
+
+          # Validate output files exist and are not empty
+          for FILE in ir.mrs ads.mrs phishing.mrs ircidr.mrs; do
+            SIZE=$(wc -c < "output_mrs/$FILE")
+            echo "Binary $FILE compiled successfully ($SIZE bytes)"
+            if [ "$SIZE" -lt 1000 ]; then
+              echo "Error: $FILE is corrupt or too small!"
+              exit 1
+            fi
+          done
+
+      - name: Deploy MRS Artifacts to Release Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: release
+          publish_dir: ./output_mrs
+          destination_dir: ./
+          keep_files: false
+
+      - name: Create Official GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="v$(date -u +'%Y.%m.%d-%H%M')"
+          RELEASE_TITLE="Iran Ruleset Engine Update ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          RELEASE_NOTES="Automated ruleset build with optimized RIPE CIDR aggregation and Shaparak payment safety layers."
+
+          echo "Publishing GitHub Release: $RELEASE_TAG"
+          gh release create "$RELEASE_TAG" output_mrs/* \
+            --title "$RELEASE_TITLE" \
+            --notes "$RELEASE_NOTES" \
+            --latest
+
+      - name: Purge jsDelivr CDN Cache
+        run: |
+          echo "Waiting 5 seconds for CDN propagation..."
+          sleep 5
+          for FILE in ir.mrs ads.mrs phishing.mrs ircidr.mrs irasn.txt; do
+            echo "Purging CDN cache for $FILE..."
+            STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
+            echo "Purge status: $STATUS"
+          done
