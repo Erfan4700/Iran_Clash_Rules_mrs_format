@@ -2,7 +2,6 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
-    # Runs twice a day (03:00 and 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -52,6 +51,9 @@ jobs:
           echo "=== Converting phishing.txt ==="
           ./mihomo convert-ruleset domain text output_text/phishing.txt output_mrs/phishing.mrs
 
+          echo "=== Converting nsfw.txt ==="
+          ./mihomo convert-ruleset domain text output_text/nsfw.txt output_mrs/nsfw.mrs
+
           echo "=== Converting ircidr.txt ==="
           ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
 
@@ -76,7 +78,7 @@ jobs:
         run: |
           RELEASE_TAG="v$(date -u +'%Y.%m.%d-%H%M')"
           RELEASE_TITLE="Iran Ruleset Engine Update ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-          RELEASE_NOTES="Automated ruleset build with optimized RIPE CIDR aggregation and Shaparak payment safety layers."
+          RELEASE_NOTES="Automated ruleset build with RIPE CIDR aggregation, Shaparak safety layers, and NSFW/Gambling filters."
 
           echo "Publishing GitHub Release: $RELEASE_TAG"
           gh release create "$RELEASE_TAG" output_mrs/* \
@@ -88,7 +90,7 @@ jobs:
         run: |
           echo "Waiting 5 seconds for CDN propagation..."
           sleep 5
-          for FILE in ir.mrs ads.mrs phishing.mrs ircidr.mrs irasn.txt; do
+          for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt; do
             echo "Purging CDN cache for $FILE..."
             STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
             echo "Purge status: $STATUS"
