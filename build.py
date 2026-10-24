@@ -1,6 +1,8 @@
 import os
 import re
 import sys
+import ssl
+import subprocess
 import ipaddress
 import urllib.request
 
@@ -9,19 +11,37 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
 
+# ایجاد کانتکست SSL جهت جلوگیری از خطای گواهی در رانرهای اوبونتو
+SSL_CONTEXT = ssl.create_default_context()
+SSL_CONTEXT.check_hostname = False
+SSL_CONTEXT.verify_mode = ssl.CERT_NONE
+
 def fetch_data(urls):
-    """Safely fetch text data over HTTPS with robust fallback mechanism."""
+    """Safely fetch text data over HTTPS with curl fallback and relaxed SSL."""
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
+        # روش اول: تلاش با urllib پایتون
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=35) as resp:
+            with urllib.request.urlopen(req, timeout=35, context=SSL_CONTEXT) as resp:
                 content = resp.read().decode('utf-8', errors='ignore')
                 if len(content.strip()) > 50:
                     return content
         except Exception as e:
-            print(f"[!] Warning fetching {url}: {e}")
+            print(f"[!] urllib warning for {url}: {e}. Retrying with system curl...")
+
+        # روش دوم: فال‌بک خودکار به curl سیستم در صورت خطای SSL پایتون
+        try:
+            result = subprocess.run(
+                ["curl", "-sSL", "--max-time", "35", "-A", HEADERS['User-Agent'], url],
+                capture_output=True, text=True, check=True
+            )
+            if len(result.stdout.strip()) > 50:
+                return result.stdout
+        except Exception as e:
+            print(f"[!] curl warning for {url}: {e}")
+
     return ""
 
 def clean_domain(line):
@@ -30,7 +50,6 @@ def clean_domain(line):
     if not line or line.startswith(('!', '//')):
         return None
 
-    # Handle hosts file structure (0.0.0.0 domain.com)
     parts = line.split()
     target = parts[1] if (len(parts) >= 2 and re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^::[0-9a-f]?$', parts[0])) else parts[0]
 
@@ -42,7 +61,6 @@ def clean_domain(line):
     target = re.sub(r'^\.', '', target)
     target = target.strip('.')
 
-    # RFC 1035 Domain regex
     domain_regex = r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$'
     if re.match(domain_regex, target) and '..' not in target:
         return target
@@ -59,15 +77,18 @@ UNBREAK_WHITELIST = {
 }
 
 def is_whitelisted(domain):
-    """Accurately check domain and subdomains without substring vulnerabilities."""
     return any(domain == safe or domain.endswith("." + safe) for safe in UNBREAK_WHITELIST)
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS (RIPE NCC WITH FAILSAFE & COLLAPSE)
+# 1. IRAN IP-CIDRS & ASNS (RIPE NCC OFFICIAL WITH APNIC MIRROR)
 # ==============================================================================
-print("[-] Step 1: Fetching Iranian IP-CIDRs from RIPE NCC (HTTPS)...")
-ripe_url = "https://ftp.ripe.net/ripe/stats/delegated-ripencc-latest"
-ripe_raw = fetch_data(ripe_url)
+print("[-] Step 1: Fetching Iranian IP-CIDRs from RIPE NCC & Mirrors...")
+ripe_urls = [
+    "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
+    "https://ftp.ripe.net/ripe/stats/delegated-ripencc-latest",
+    "https://ftp.apnic.net/pub/stats/ripencc/delegated-ripencc-latest"
+]
+ripe_raw = fetch_data(ripe_urls)
 
 ipv4_nets = []
 ipv6_nets = []
@@ -94,9 +115,32 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# Failsafe: Both CIDRs and ASNs must be populated
+# فال‌بک نجات اضطراری در صورت قطعی کل سرورهای اروپایی
+if not ipv4_nets:
+    print("[!] Upstream RIR mirrors failed. Engaging emergency fallback mirror...")
+    fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt")
+    for line in fallback_cidrs.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            try:
+                net = ipaddress.ip_network(line, strict=False)
+                if net.version == 4:
+                    ipv4_nets.append(net)
+                else:
+                    ipv6_nets.append(net)
+            except Exception:
+                pass
+
+if not asns:
+    fallback_asns = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt")
+    for line in fallback_asns.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
+
+# اگر باز هم خالی بود، برای جلوگیری از ساخت فایل معیوب بیلد متوقف شود
 if not ipv4_nets or not asns:
-    print("[X] FATAL ERROR: RIPE NCC fetch failed or dataset incomplete. Aborting.")
+    print("[X] FATAL ERROR: Both RIR and fallback mirrors failed. Aborting.")
     sys.exit(1)
 
 collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
@@ -185,7 +229,6 @@ KEYWORD_PATTERN = re.compile(r'(?:^|[.-])(?:shaparak|sana|divar|sadad|sep|mellat
 if phishing_raw:
     for line in phishing_raw.splitlines():
         d = clean_domain(line)
-        # فقط در صورتی اضافه کن که در وایت‌لیست بانکی نباشد (حل باگ مسدود شدن درگاه‌ها)
         if d and KEYWORD_PATTERN.search(d) and not is_whitelisted(d):
             phishing_domains.add(d)
 
