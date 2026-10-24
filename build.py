@@ -39,7 +39,7 @@ def clean_domain(line):
     return None
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS (SEPARATE IPV4 & IPV6 COLLAPSE)
+# 1. IRAN IP-CIDRS & ASNS
 # ==============================================================================
 print("[-] Step 1: Fetching Iranian IP-CIDRs...")
 ripe_urls = [
@@ -73,7 +73,6 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# If primary RIPE failed, parse from fallback mirror
 if not ipv4_nets:
     print("[!] Using fallback mirror for Iran CIDRs...")
     mirror_raw = fetch_data(ripe_urls[1])
@@ -89,7 +88,6 @@ if not ipv4_nets:
             except Exception:
                 pass
 
-# Separate collapse prevents TypeError: IPv4 vs IPv6
 collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets)) if ipv4_nets else []
 collapsed_v6 = list(ipaddress.collapse_addresses(ipv6_nets)) if ipv6_nets else []
 all_collapsed = collapsed_v4 + collapsed_v6
@@ -100,7 +98,6 @@ with open(f"{OUTPUT_DIR}/ircidr.txt", "w", encoding="utf-8") as f:
     for net in all_collapsed:
         f.write(f"{net}\n")
 
-# Fallback ASNs if RIPE was empty
 if not asns:
     asn_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt")
     for line in asn_raw.splitlines():
@@ -188,4 +185,27 @@ for line in raw_phishing.splitlines():
 print(f"[+] Total phishing domains: {len(phishing_domains)}")
 with open(f"{OUTPUT_DIR}/phishing.txt", "w", encoding="utf-8") as f:
     for d in sorted(phishing_domains):
+        f.write(f"{d}\n")
+
+# ==============================================================================
+# 5. ADULT CONTENT & GAMBLING (NSFW / PARENTAL CONTROL)
+# ==============================================================================
+print("[-] Step 5: Compiling Adult Content and Gambling blocklist...")
+nsfw_urls = [
+    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/nsfw.txt",
+    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-porn/hosts"
+]
+
+nsfw_domains = {"betcart.com", "1xbet.com", "takbet.com", "pornhub.com", "xvideos.com"}
+raw_nsfw = fetch_data(nsfw_urls)
+for line in raw_nsfw.splitlines():
+    parts = line.split()
+    if parts:
+        d = clean_domain(parts[-1])
+        if d:
+            nsfw_domains.add(d)
+
+print(f"[+] Total adult/gambling domains: {len(nsfw_domains)}")
+with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
+    for d in sorted(nsfw_domains):
         f.write(f"{d}\n")
