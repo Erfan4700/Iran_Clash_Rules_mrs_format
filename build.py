@@ -4,18 +4,19 @@ import sys
 import subprocess
 import ipaddress
 import urllib.request
+import xml.etree.ElementTree as ET
 
 OUTPUT_DIR = "output_text"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
+HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'}
 
 def fetch_data(urls, timeout=60):
-    """Safely fetch data with native curl handling redirects and compression."""
+    """Safely fetch text data over HTTPS with native curl handling redirects and compression."""
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
-        # استفاده از curl با فلگ --compressed جهت جلوگیری از خطای دیتای فشرده RIPE
+        # روش اول: استفاده از curl برای مدیریت دیتای فشرده و ریدایرکت‌ها
         try:
             cmd = ["curl", "-sSL", "--compressed", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -24,7 +25,7 @@ def fetch_data(urls, timeout=60):
         except Exception as e:
             print(f"[!] curl notice for {url}: {e}. Retrying via urllib...")
 
-        # فال‌بک با urllib
+        # روش دوم: فال‌بک با urllib
         try:
             req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -108,9 +109,9 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# فال‌بک اضطراری (در صورت آفلاین بودن سرورهای هلند یا بیلد اولیه)
+# فال‌بک اضطراری با دیتای معتبر
 if not ipv4_nets:
-    print("[!] Primary RIR servers returned empty lines. Engaging emergency backup snapshot...")
+    print("[!] Primary RIR mirrors delayed. Engaging backup mirror...")
     fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt", timeout=30)
     for line in fallback_cidrs.splitlines():
         line = line.strip()
@@ -255,23 +256,87 @@ with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
         f.write(f"{d}\n")
 
 # ==============================================================================
-# 6. IRANIAN ANDROID APPS (CLASSICAL PACKAGE-NAME RULES)
+# 6. IRANIAN APPS (AUTONOMOUS MASSIVE CRAWLER & CURATED CORE)
 # ==============================================================================
-print("[-] Step 6: Compiling Iranian Android Application Packages...")
-ANDROID_PACKAGES = [
-    "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.delivery",
-    "taxi.tap30.passenger", "taxi.tap30.driver", "com.taxsee.taxsee",
-    "neshan.maps", "ir.balad.maps",
+print("[-] Step 6: Scraping and compiling massive domestic Android & Windows database...")
+
+# ۱. هسته تضمین‌شده اپلیکیشن‌های حیاتی (بانک‌ها، تاکسی‌ها، صرافی‌ها، پیام‌رسان‌ها)
+CURATED_ANDROID_SEED = {
+    # تاکسی و لجستیک
+    "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
+    "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer", "com.alopeyk.courier",
+    "com.taxsee.taxsee", "neshan.maps", "ir.balad.maps",
+    # فروشگاه و خدمات
     "com.digikala", "com.digikala.seller", "ir.divar", "com.sheypoor.mobile", "ir.torob",
-    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger",
-    "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel",
-    "ir.tejaratbank.mobile", "com.bmi.mobilebank", "ir.sep.sesame", "com.tosan.shahr",
-    "com.parsian.mobile", "ir.mellat.mbanking", "com.asanpardakht", "ir.zarinpal.android",
-    "ir.payping.app", "ir.blu.banking", "ir.resalat.mb",
-    "ir.mci.mygov", "com.khedmat.app", "ir.post.my", "com.farsitel.bazaar", "ir.mservices.myket"
+    "com.emalls", "com.basalam.app", "com.snappmarket", "com.zoodfood.android",
+    # مالی، بانکی و رمزارز
+    "market.nobitex", "net.nobitex", "ir.wallex.app", "com.abantether", "com.ramzinex.app", "ir.bitpin", "io.exir",
+    "ir.tejaratbank.mobile", "com.bmi.mobilebank", "com.bmi.bam", "ir.sep.sesame", "ir.banksepah.mobilebank",
+    "ir.omidbank", "com.bsi.mobilebank", "ir.bpi.mobilebank", "com.bki.mobilebank", "ir.refah.mobilebank",
+    "com.maskan.mobilebank", "ir.samanpr.mobillet", "ir.sinabank.mobilebank", "com.ayandeh.kilid",
+    "ir.blu.banking", "ir.resalat.mb", "ir.zarinpal.android", "ir.payping.app", "com.asanpardakht",
+    # رسانه، فیلم و سرگرمی
+    "com.aparat.android", "com.saba.filimo", "ir.shatel.namava", "ir.filmnet.android", "ir.cinematicket.app",
+    "com.alibaba.android", "ir.flytoday", "com.pintapin", "com.jabama",
+    # پیام‌رسان و اپراتورها
+    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger", "ir.gap.im", "com.iGap",
+    "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel", "com.farsitel.bazaar", "ir.mservices.myket"
+}
+
+# پکیج‌هایی که هرگز نباید دایرکت شوند (برنامه‌های خارجی موجود در کافه‌بازار)
+GLOBAL_EXCLUDES = {
+    "org.telegram.messenger", "com.whatsapp", "com.instagram.android",
+    "com.facebook.katana", "com.twitter.android", "com.google.android.youtube",
+    "com.google.android.gms", "com.android.chrome", "org.mozilla.firefox",
+    "com.spotify.music", "com.netflix.mediaclient"
+}
+
+scraped_packages = set(CURATED_ANDROID_SEED)
+PKG_REGEX = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*(\.[a-zA-Z][a-zA-Z0-9_]*)+$')
+
+# ۲. کراولر خودکار و مستقل از سرورهای کافه‌بازار (استخراج هزاران پکیج واقعی)
+try:
+    print("[*] Launching autonomous crawler on CafeBazaar official sitemaps...")
+    store_sitemap = "https://cafebazaar.ir/sitemap.xml"
+    sitemap_index = fetch_data(store_sitemap, timeout=30)
+    if sitemap_index:
+        # پیدا کردن ساب‌سایت‌مپ‌های برنامه‌ها
+        sub_maps = re.findall(r'https://cafebazaar\.ir/sitemaps/sitemap-app-\d+\.xml', sitemap_index)
+        # کراول ۵ سایت‌مپ اول اپلیکیشن‌ها (شامل هزاران برنامه)
+        for sm in sub_maps[:5]:
+            try:
+                sm_data = fetch_data(sm, timeout=35)
+                if sm_data:
+                    found = re.findall(r'/app/([a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)+)', sm_data)
+                    for p in found:
+                        if p not in GLOBAL_EXCLUDES and PKG_REGEX.match(p) and len(p) < 90:
+                            scraped_packages.add(p)
+            except Exception:
+                pass
+except Exception as e:
+    print(f"[!] Live crawler notice: {e}. Falling back to extensive baseline.")
+
+# ۳. فال‌بک تکمیلی به دیتابیس جامعه متن‌باز برای رسیدن به حداکثر جامعیت
+if len(scraped_packages) < 1000:
+    print("[!] Pulling massive community package baseline...")
+    community_repo = "https://raw.githubusercontent.com/SamadiPour/iran-android-apps/master/packages.txt"
+    comm_data = fetch_data(community_repo, timeout=30)
+    if comm_data:
+        for line in comm_data.splitlines():
+            pkg = line.replace("PACKAGE-NAME,", "").strip()
+            if pkg not in GLOBAL_EXCLUDES and PKG_REGEX.match(pkg) and len(pkg) < 90:
+                scraped_packages.add(pkg)
+
+# ۴. پروسس‌های دسکتاپ ویندوز
+WINDOWS_PROCESSES = [
+    "Bale.exe", "Eitaa.exe", "EitaaDesktop.exe", "Rubika.exe",
+    "Soroush.exe", "Gap.exe", "IDMan.exe", "Digikala.exe", "Aparat.exe"
 ]
 
 with open(f"{OUTPUT_DIR}/apps.txt", "w", encoding="utf-8") as f:
-    for pkg in sorted(set(ANDROID_PACKAGES)):
+    for pkg in sorted(scraped_packages):
         f.write(f"PACKAGE-NAME,{pkg}\n")
-print(f"[+] Total Android packages compiled: {len(ANDROID_PACKAGES)}")
+    for proc in sorted(WINDOWS_PROCESSES):
+        f.write(f"PROCESS-NAME,{proc}\n")
+
+print(f"[+] Successfully compiled {len(scraped_packages) + len(WINDOWS_PROCESSES)} total application rules (Android: {len(scraped_packages)}, Windows: {len(WINDOWS_PROCESSES)})")
