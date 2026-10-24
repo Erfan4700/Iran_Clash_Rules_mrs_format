@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import ssl
 import subprocess
 import ipaddress
 import urllib.request
@@ -11,35 +10,29 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
 
-SSL_CONTEXT = ssl.create_default_context()
-SSL_CONTEXT.check_hostname = False
-SSL_CONTEXT.verify_mode = ssl.CERT_NONE
-
-def fetch_data(urls, timeout=40):
-    """Safely fetch text data with adequate timeout for large registry dumps."""
+def fetch_data(urls, timeout=60):
+    """Safely fetch data with native curl handling redirects and compression."""
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
-        # روش اول: urllib
+        # استفاده از curl با فلگ --compressed جهت جلوگیری از خطای دیتای فشرده RIPE
+        try:
+            cmd = ["curl", "-sSL", "--compressed", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            if len(result.stdout.strip()) > 50:
+                return result.stdout
+        except Exception as e:
+            print(f"[!] curl notice for {url}: {e}. Retrying via urllib...")
+
+        # فال‌بک با urllib
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 content = resp.read().decode('utf-8', errors='ignore')
                 if len(content.strip()) > 50:
                     return content
         except Exception as e:
-            print(f"[!] urllib notice for {url}: {e}. Retrying via system curl...")
-
-        # روش دوم: curl با تایم‌اوت تطبیق‌پذیر
-        try:
-            result = subprocess.run(
-                ["curl", "-sSL", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url],
-                capture_output=True, text=True, check=True
-            )
-            if len(result.stdout.strip()) > 50:
-                return result.stdout
-        except Exception as e:
-            print(f"[!] curl notice for {url}: {e}")
+            print(f"[!] urllib notice for {url}: {e}")
 
     return ""
 
@@ -81,16 +74,13 @@ def is_whitelisted(domain):
 # ==============================================================================
 # 1. IRAN IP-CIDRS & ASNS (RIPE NCC & APNIC OFFICIAL MIRRORS)
 # ==============================================================================
-print("[-] Step 1: Fetching Iranian IP-CIDRs from Authoritative RIRs (8MB+ dataset)...")
-# آدرس‌های دقیق با اصلاح ساختار مسیر APNIC و پروتکل‌های چندگانه
+print("[-] Step 1: Fetching Iranian IP-CIDRs from Authoritative RIRs...")
 ripe_urls = [
     "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
     "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest",
-    "http://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
-    "http://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest"
+    "http://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest"
 ]
 
-# افزایش مهلت دانلود به ۹۰ ثانیه برای دانلود کامل دیتاست سنگین ۸ مگابایتی
 ripe_raw = fetch_data(ripe_urls, timeout=90)
 
 ipv4_nets = []
@@ -118,12 +108,11 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# فال‌بک خودکفا و ۱۰۰٪ مستقل (استفاده از آخرین خروجی سالم در برنچ release مخزن خودتان)
+# فال‌بک اضطراری (در صورت آفلاین بودن سرورهای هلند یا بیلد اولیه)
 if not ipv4_nets:
-    print("[!] Authoritative RIR servers delayed/unreachable. Engaging Self-Repository Fallback...")
-    self_cidr_url = "https://raw.githubusercontent.com/Erfan4700/Iran_Clash_Rules_mrs_format/release/ircidr.txt"
-    self_raw_cidrs = fetch_data(self_cidr_url, timeout=30)
-    for line in self_raw_cidrs.splitlines():
+    print("[!] Primary RIR servers returned empty lines. Engaging emergency backup snapshot...")
+    fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt", timeout=30)
+    for line in fallback_cidrs.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
             try:
@@ -136,16 +125,14 @@ if not ipv4_nets:
                 pass
 
 if not asns:
-    self_asn_url = "https://raw.githubusercontent.com/Erfan4700/Iran_Clash_Rules_mrs_format/release/irasn.txt"
-    self_raw_asns = fetch_data(self_asn_url, timeout=30)
-    for line in self_raw_asns.splitlines():
+    fallback_asns = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt", timeout=30)
+    for line in fallback_asns.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
             asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
 
-# اگر در نخستین بیلد تاریخی هیچ دیتایی نبود توقف ایمن
 if not ipv4_nets or not asns:
-    print("[X] FATAL ERROR: Unable to acquire IP/ASN data from RIRs or local snapshot. Aborting.")
+    print("[X] FATAL ERROR: Unable to acquire IP/ASN data. Aborting.")
     sys.exit(1)
 
 collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
