@@ -23,7 +23,7 @@ An enterprise-grade, memory-optimized ruleset suite providing automated **Mihomo
 
 All files are hosted on the `release` branch and served through high-speed CDN edges:
 
-| Ruleset | Type | Live Size | Routing Action | Target Description | Fast CDN URL |
+| Ruleset | Type | Size | Routing Action | Target Description | CDN URL |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | **`ir.mrs`** | `domain` | ![ir Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ir.mrs?branch=release&label=&color=success) | `DIRECT` | Verified Iranian domains (`.ir` + validated commercial TLDs) | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ir.mrs) |
 | **`ircidr.mrs`** | `ipcidr` | ![ircidr Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ircidr.mrs?branch=release&label=&color=blue) | `DIRECT` | Collapsed, supernet-aggregated Iranian IPv4 & IPv6 blocks | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ircidr.mrs) |
@@ -93,3 +93,13 @@ This script acts as the master coordinator for **Clash Verge Rev** and **Mihomo 
 ## 📄 License
 
 Distributed under the **MIT License**. Upstream intellectual property and data rights belong to their respective registries and maintainers.
+
+## 🌐 The Complete Ecosystem (Related Projects)
+
+This repository is part of a two-pillar, self-hosted routing & security suite for Mihomo / Clash:
+
+* 🛡️ **Global Defense:** **[HaGeZi_BlockLists_mrs_format](https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format)** — Automated, pre-compiled binary `.mrs` versions of HaGeZi DNS blocklists (Adblock, Telemetry, and Threat Intelligence Feeds).
+* 🇮🇷 **Regional Engine (This Repo):** **[Iran_Clash_Rules_mrs_format](https://github.com/Erfan4700/Iran_Clash_Rules_mrs_format)** — Optimized Iranian domestic routing, collapsed RIPE CIDRs, and payment gateway safety layers.
+* ⚡ **Unified Driver:** [`clash-verge-merge.js`](./clash-verge-merge.js) — The master integration script combining both repositories into a zero-leak Clash profile.
+
+---
