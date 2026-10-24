@@ -38,21 +38,17 @@ const ENABLE_IRAN_PHISHING = true;
 // 12. Block UDP/443 (QUIC) to Prevent ISP Packet Loss & Speed Throttling
 const ENABLE_QUIC_BLOCK = true;
 
-// Automated Update Intervals (in hours)
-const SECURITY_UPDATE_HOURS = 24;
-const STANDARD_UPDATE_HOURS = 48;
-
-const SECURITY_UPDATE_INTERVAL = SECURITY_UPDATE_HOURS * 3600;
-const STANDARD_UPDATE_INTERVAL = STANDARD_UPDATE_HOURS * 3600;
+// Automated Update Intervals (in seconds)
+const SECURITY_UPDATE_INTERVAL = 24 * 3600;
+const STANDARD_UPDATE_INTERVAL = 48 * 3600;
 
 // ==============================================================================
-// 1. IMMUTABLE DATASETS & SOURCES (100% Autonomous & Self-Hosted)
+// 1. IMMUTABLE DATASETS & SOURCES (100% Autonomous & Static Memory)
 // ==============================================================================
 
 const HAGEZI_MRS_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/HaGeZi_BlockLists_mrs_format@release/";
 const IRAN_RULES_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/";
 
-// Static mapping dictionary for HaGeZi tiers
 const HAGEZI_TIERS_MAP = Object.freeze({
   light: "HageziLight",
   normal: "HageziNormal",
@@ -63,7 +59,7 @@ const HAGEZI_TIERS_MAP = Object.freeze({
 
 const SELECTED_HAGEZI_NAME = HAGEZI_TIERS_MAP[HAGEZI_TIER.toLowerCase()] ?? "HageziProPlus";
 
-// Precompiled Regexes for traffic sanitization and automated proxy group extraction
+// Precompiled Regexes
 const JUNK_RULES_REGEX = /(?:GEOIP|GEOSITE|RULE-SET),[^,\n]*(?<![a-z0-9])(?:CN|CHINA|RU|RUSSIA)(?![a-z0-9])/i;
 const PROXY_KEYWORD_REGEX = /proxy|auto|select|default|نهایی|اینترنت|دستی|انتخاب/i;
 const MATCH_RULE_REGEX = /^match(?:,|$)/i;
@@ -71,7 +67,7 @@ const DIRECT_KEYWORD_REGEX = /direct/i;
 const IP_RULE_PREFIX_REGEX = /^(?:GEOIP|IP-CIDR|IP-CIDR6|IP-ASN),/i;
 const NO_RESOLVE_REGEX = /,\s*no-resolve(?:\s*#.*)?$/i;
 
-// Critical domestic domains not covered by the .ir TLD
+// Critical domestic domains outside .ir TLD
 const MANUAL_DOMAINS = Object.freeze([
   // Transportation & Navigation
   "neshan.org", "rajman.org", "cedarmaps.com", "snapp.cab", "snapp.tax",
@@ -85,9 +81,11 @@ const MANUAL_DOMAINS = Object.freeze([
   "nobitex.net", "exir.io", "wallex.net"
 ]);
 
+// Precomputed domestic routing rules (Pre-flattened to eliminate runtime allocations)
+const PRECOMPUTED_MANUAL_RULES = Object.freeze(MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`));
 const MANUAL_WILDCARDS = Object.freeze(MANUAL_DOMAINS.map(d => `+.${d}`));
 
-// Static host mapping for SafeSearch enforcement
+// Static SafeSearch host mapping
 const FROZEN_HOSTS = Object.freeze({
   "forcesafesearch.google.com": "216.239.38.120",
   "www.google.com": "216.239.38.120",
@@ -97,14 +95,14 @@ const FROZEN_HOSTS = Object.freeze({
   "bing.com": "204.79.197.220"
 });
 
-// Pure domestic DNS resolvers (Iran)
+// Pure domestic resolvers (Iran)
 const PURE_DOMESTIC_RESOLVERS = Object.freeze([
   "193.186.32.32",
   "217.218.127.127",
   "217.218.155.155"
 ]);
 
-// Anti-poisoning DNS pool for proxy handshake resolution
+// Anti-poisoning resolvers for proxy handshakes
 const UNPOISONED_PROXY_RESOLVERS = Object.freeze([
   "https://223.5.5.5/dns-query",
   "223.5.5.5",
@@ -112,14 +110,14 @@ const UNPOISONED_PROXY_RESOLVERS = Object.freeze([
   "193.186.32.32"
 ]);
 
-// Bootstrap DNS resolvers
+// Bootstrap resolvers
 const HYBRID_BOOTSTRAP_RESOLVERS = Object.freeze([
   "223.5.5.5",
   "119.29.29.29",
   "193.186.32.32"
 ]);
 
-// Encrypted international DoH endpoints routed through the proxy tunnel
+// International DoH endpoints routed through proxy tunnel
 const DOH_ENDPOINTS = Object.freeze([
   "https://1.1.1.1/dns-query",
   "https://8.8.8.8/dns-query",
@@ -128,7 +126,6 @@ const DOH_ENDPOINTS = Object.freeze([
 
 // Precompiled Binary MRS & Classical Rule-Providers
 const PRECOMPILED_PROVIDERS = Object.freeze({
-  // Global Protection (HaGeZi Repository)
   "hagezi-main": Object.freeze({
     type: "http",
     behavior: "domain",
@@ -211,8 +208,6 @@ const PRECOMPILED_PROVIDERS = Object.freeze({
       interval: STANDARD_UPDATE_INTERVAL
     })
   } : {}),
-
-  // Regional Iran Protection & Routing (Iran Rules Repository)
   ...(ENABLE_IRAN_ADS ? {
     "ads-ir": Object.freeze({
       type: "http",
@@ -281,7 +276,7 @@ const PRECOMPILED_PROVIDERS = Object.freeze({
   } : {})
 });
 
-// Nameserver Policy: Route domestic queries strictly to domestic resolvers
+// Nameserver Policy
 const PRECOMPILED_NS_POLICY = Object.freeze(
   MANUAL_DOMAINS.reduce((acc, domain) => {
     acc[`+.${domain}`] = PURE_DOMESTIC_RESOLVERS;
@@ -294,7 +289,7 @@ const PRECOMPILED_NS_POLICY = Object.freeze(
   })
 );
 
-// Fake-IP Filter (Bypasses Captive Portals, NTP, Gaming CDNs, & Domestic TLDs)
+// Fake-IP Filter
 const FROZEN_FAKE_IP_FILTER = Object.freeze([
   "+.ir",
   "rule-set:ir",
@@ -309,7 +304,7 @@ const FROZEN_FAKE_IP_FILTER = Object.freeze([
   "location.services.mozilla.com"
 ]);
 
-// Streamlined & Stable Sniffer Configuration
+// Sniffer Configuration
 const FROZEN_SNIFFER_CONFIG = Object.freeze({
   enable: true,
   "force-dns-mapping": true,
@@ -329,9 +324,9 @@ const FROZEN_SNIFFER_CONFIG = Object.freeze({
   ])
 });
 
-// Immutable Core Routing Rules (Zero-External Geo-Database Dependency)
+// Immutable Core Routing Rules
 const STATIC_CORE_RULES = Object.freeze([
-  // 1. Local Network RFC1918 & Loopback
+  // 1. RFC1918 Private & Local CIDRs
   "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve",
   "IP-CIDR,127.0.0.0/8,DIRECT,no-resolve",
   "IP-CIDR,172.16.0.0/12,DIRECT,no-resolve",
@@ -343,7 +338,7 @@ const STATIC_CORE_RULES = Object.freeze([
   "IP-CIDR6,fc00::/7,DIRECT,no-resolve",
   "IP-CIDR6,fe80::/10,DIRECT,no-resolve",
 
-  // 2. A-GPS & BitTorrent Ports
+  // 2. Protocols and Ports
   "DST-PORT,7275,DIRECT",
   "DST-PORT,6881-6889,DIRECT",
   "DST-PORT,51413,DIRECT",
@@ -359,7 +354,7 @@ const STATIC_CORE_RULES = Object.freeze([
     "RULE-SET,hagezi-android,REJECT"
   ] : []),
 
-  // 4. Specialized Content Filtering (Porn & Gambling)
+  // 4. Content Filtering
   ...(ENABLE_PORN_FILTER ? ["RULE-SET,hagezi-nsfw,REJECT"] : []),
   ...(ENABLE_GAMBLING_FILTER ? ["RULE-SET,hagezi-gambling,REJECT"] : []),
   ...((ENABLE_PORN_FILTER || ENABLE_GAMBLING_FILTER) ? ["RULE-SET,nsfw-ir,REJECT"] : []),
@@ -373,7 +368,7 @@ const STATIC_CORE_RULES = Object.freeze([
 
   // 7. Direct Domestic Traffic
   ...(ENABLE_IRAN_ROUTING ? [
-    ...MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`),
+    ...PRECOMPUTED_MANUAL_RULES,
     "DOMAIN-SUFFIX,ir,DIRECT",
     "RULE-SET,ir,DIRECT",
     "RULE-SET,ircidr,DIRECT,no-resolve",
@@ -400,12 +395,8 @@ function resolvePrimaryProxyGroup(groups) {
     const { type, name } = group;
 
     const isMatch = PROXY_KEYWORD_REGEX.test(name);
-    if (type === "select" && isMatch) {
-      return name;
-    }
-    if (!matchedSelectGroup && isMatch) {
-      matchedSelectGroup = name;
-    }
+    if (type === "select" && isMatch) return name;
+    if (!matchedSelectGroup && isMatch) matchedSelectGroup = name;
     if (!fallbackAutoGroup && (type === "url-test" || type === "fallback" || type === "load-balance")) {
       fallbackAutoGroup = name;
     }
@@ -436,7 +427,7 @@ function main(config, profileName) {
     }
   }
 
-  // Pure Local Engine: Disable External Geo-Database Loading
+  // Pure Local Engine: Fully Disable Geo-Database Overheads
   config["geodata-mode"] = false;
   config["geo-auto-update"] = false;
   delete config["geox-url"];
@@ -453,7 +444,7 @@ function main(config, profileName) {
   config.sniffer = FROZEN_SNIFFER_CONFIG;
 
   if (ENABLE_SAFE_SEARCH) {
-    config.hosts = Object.assign({}, config.hosts ?? {}, FROZEN_HOSTS);
+    Object.assign((config.hosts ??= {}), FROZEN_HOSTS);
   }
 
   const dns = (config.dns ??= {});
@@ -481,7 +472,7 @@ function main(config, profileName) {
 
   const ruleSet = new Set(STATIC_CORE_RULES);
   
-  // Route Waze Navigation directly through the primary proxy tunnel
+  // Dynamic Waze Navigation rules routed to primary proxy
   ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
   ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
 
@@ -499,12 +490,16 @@ function main(config, profileName) {
 
       if (cleanRule.length === 0) continue;
 
-      // Automatically append 'no-resolve' to all IP/ASN based rules to prevent DNS leaks
-      if (IP_RULE_PREFIX_REGEX.test(cleanRule) && !NO_RESOLVE_REGEX.test(cleanRule)) {
+      const c0 = cleanRule.charCodeAt(0);
+
+      // Fast ASCII gate: Only test IP regex if rule begins with 'G'/'g' (GEOIP) or 'I'/'i' (IP-CIDR/IP-ASN)
+      if ((c0 === 71 || c0 === 103 || c0 === 73 || c0 === 105) && 
+          IP_RULE_PREFIX_REGEX.test(cleanRule) && 
+          !NO_RESOLVE_REGEX.test(cleanRule)) {
         cleanRule = `${cleanRule},no-resolve`;
       }
 
-      const c0 = cleanRule.charCodeAt(0);
+      // Fast ASCII gate for MATCH rules ('M' / 'm')
       if ((c0 === 77 || c0 === 109) && MATCH_RULE_REGEX.test(cleanRule)) {
         if (!capturedMatchRule && !DIRECT_KEYWORD_REGEX.test(cleanRule)) {
           capturedMatchRule = cleanRule;
