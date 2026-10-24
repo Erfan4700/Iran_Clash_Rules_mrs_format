@@ -23,7 +23,7 @@ An enterprise-grade, memory-optimized ruleset suite providing automated **Mihomo
 
 All files are hosted on the `release` branch and served through high-speed CDN edges:
 
-| Ruleset | Type | Live Size | Routing Action | Target Description | Fast CDN URL |
+| Ruleset | Type | Size | Routing Action | Target Description | CDN URL |
 | :--- | :---: | :---: | :---: | :--- | :--- |
 | **`ir.mrs`** | `domain` | ![ir Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ir.mrs?branch=release&label=&color=success) | `DIRECT` | Verified Iranian domains (`.ir` + validated commercial TLDs) | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ir.mrs) |
 | **`ircidr.mrs`** | `ipcidr` | ![ircidr Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ircidr.mrs?branch=release&label=&color=blue) | `DIRECT` | Collapsed, supernet-aggregated Iranian IPv4 & IPv6 blocks | [Download CDN](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ircidr.mrs) |
