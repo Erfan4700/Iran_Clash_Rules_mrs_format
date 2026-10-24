@@ -15,19 +15,16 @@ const ENABLE_SAFE_SEARCH = false;
 // 4. Automated Update Intervals (in hours)
 const SECURITY_UPDATE_HOURS = 24;
 const STANDARD_UPDATE_HOURS = 48;
-const GEO_UPDATE_HOURS = 72;
 
 const SECURITY_UPDATE_INTERVAL = SECURITY_UPDATE_HOURS * 3600;
 const STANDARD_UPDATE_INTERVAL = STANDARD_UPDATE_HOURS * 3600;
 
 // ==============================================================================
-// 1. IMMUTABLE DATASETS & SOURCES (Static Allocation Outside Runtime)
+// 1. IMMUTABLE DATASETS & SOURCES (100% Autonomous & Self-Hosted)
 // ==============================================================================
 
-// Self-Hosted Autonomous Repositories
 const HAGEZI_MRS_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/HaGeZi_BlockLists_mrs_format@release/";
 const IRAN_RULES_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/";
-const METACUBEX_GEO_URL = "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@release/";
 
 // Static mapping dictionary for HaGeZi tiers
 const HAGEZI_TIERS_MAP = Object.freeze({
@@ -196,12 +193,6 @@ const FROZEN_FAKE_IP_FILTER = Object.freeze([
   "location.services.mozilla.com"
 ]);
 
-// Official MetaCubeX GeoIP Engine
-const FROZEN_GEOX_URL = Object.freeze({
-  geoip: `${METACUBEX_GEO_URL}geoip.metadb`,
-  mmdb: `${METACUBEX_GEO_URL}geoip.metadb`
-});
-
 // Streamlined & Stable Sniffer Configuration
 const FROZEN_SNIFFER_CONFIG = Object.freeze({
   enable: true,
@@ -222,15 +213,22 @@ const FROZEN_SNIFFER_CONFIG = Object.freeze({
   ])
 });
 
-// Immutable Core Routing Rules (Optimized for Zero GC Allocation)
+// Immutable Core Routing Rules (100% Zero-External Geo-Dependency)
 const STATIC_CORE_RULES = Object.freeze([
-  // 1. Local Network, Multicast, & A-GPS Geolocation
-  "DST-PORT,7275,DIRECT",
-  "GEOIP,private,DIRECT,no-resolve",
+  // 1. Local Network RFC1918 & Loopback (Direct with Zero External DB)
+  "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve",
+  "IP-CIDR,127.0.0.0/8,DIRECT,no-resolve",
+  "IP-CIDR,172.16.0.0/12,DIRECT,no-resolve",
+  "IP-CIDR,192.168.0.0/16,DIRECT,no-resolve",
+  "IP-CIDR,169.254.0.0/16,DIRECT,no-resolve",
   "IP-CIDR,224.0.0.0/4,DIRECT,no-resolve",
   "IP-CIDR,255.255.255.255/32,DIRECT,no-resolve",
+  "IP-CIDR6,::1/128,DIRECT,no-resolve",
+  "IP-CIDR6,fc00::/7,DIRECT,no-resolve",
+  "IP-CIDR6,fe80::/10,DIRECT,no-resolve",
 
-  // 2. Peer-to-Peer / BitTorrent Ports
+  // 2. A-GPS & BitTorrent Ports
+  "DST-PORT,7275,DIRECT",
   "DST-PORT,6881-6889,DIRECT",
   "DST-PORT,51413,DIRECT",
 
@@ -242,13 +240,12 @@ const STATIC_CORE_RULES = Object.freeze([
   "RULE-SET,ads-ir,REJECT",
   "RULE-SET,phishing-ir,REJECT",
 
-  // 5. Direct Domestic Traffic (Manual Domains, National TLD, CIDRs, & ASNs)
+  // 5. Direct Domestic Traffic (Self-Hosted Domains, National TLD, CIDRs, & ASNs)
   ...MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`),
   "DOMAIN-SUFFIX,ir,DIRECT",
   "RULE-SET,ir,DIRECT",
   "RULE-SET,ircidr,DIRECT,no-resolve",
   "RULE-SET,irasn,DIRECT,no-resolve",
-  "GEOIP,IR,DIRECT,no-resolve",
 
   // 6. Block QUIC (UDP/443) to Prevent Censorship Throttling
   "AND,((NETWORK,UDP),(DST-PORT,443)),REJECT"
@@ -306,10 +303,11 @@ function main(config, profileName) {
     }
   }
 
+  // Pure Local Engine: Disable External Geo-Database Loading
   config["geodata-mode"] = false;
-  config["geo-auto-update"] = true;
-  config["geo-update-interval"] = GEO_UPDATE_HOURS;
-  config["geox-url"] = FROZEN_GEOX_URL;
+  config["geo-auto-update"] = false;
+  delete config["geox-url"];
+
   config["keep-alive-idle"] = 600;
   config["keep-alive-interval"] = 15;
 
