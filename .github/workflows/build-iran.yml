@@ -87,7 +87,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          RELEASE_TAG="release"
+          RELEASE_TAG="latest"
           RELEASE_TITLE="Iran Ruleset Engine (Rolling Update: $(date -u +'%Y-%m-%d %H:%M UTC'))"
           RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and Android package routing."
 
