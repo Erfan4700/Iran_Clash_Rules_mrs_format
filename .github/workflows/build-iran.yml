@@ -88,8 +88,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_TAG="latest"
-          RELEASE_TITLE="Iran Ruleset Engine (Rolling Update: $(date -u +'%Y-%m-%d %H:%M UTC'))"
-          RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and thousands of crawled Android/Windows packages."
+          NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
+          RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
+          RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and thousands of crawled Android/Windows packages. Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "Updating existing release..."
