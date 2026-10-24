@@ -1,6 +1,5 @@
 import os
 import re
-import math
 import ipaddress
 import urllib.request
 
@@ -35,7 +34,7 @@ def clean_domain(line):
     return None
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS (RIPE NCC)
+# 1. IRAN IP-CIDRS & ASNS (RIPE NCC WITH SAFE RANGE SUMMARIZATION)
 # ==============================================================================
 print("[-] Step 1: Fetching and aggregating Iranian IPv4 prefixes from RIPE NCC...")
 ripe_url = "https://ftp.ripe.net/ripe/stats/delegated-ripencc-latest"
@@ -52,11 +51,17 @@ for line in ripe_raw.splitlines():
         if parts[2] == 'ipv4':
             start_ip = parts[3]
             count = int(parts[4])
-            prefix_len = 32 - int(math.log2(count))
-            networks.append(ipaddress.ip_network(f"{start_ip}/{prefix_len}"))
+            try:
+                first_ip = ipaddress.IPv4Address(start_ip)
+                last_ip = first_ip + (count - 1)
+                # Break non-standard ranges into valid CIDR blocks
+                networks.extend(ipaddress.summarize_range(first_ip, last_ip))
+            except Exception as e:
+                pass
         elif parts[2] == 'asn':
             asns.append(f"IP-ASN,{parts[3]}")
 
+# Collapse contiguous subnets into supernets
 collapsed_networks = list(ipaddress.collapse_addresses(networks)) if networks else []
 print(f"[+] Successfully aggregated {len(collapsed_networks)} supernets and {len(asns)} ASNs.")
 
@@ -72,7 +77,6 @@ with open(f"{OUTPUT_DIR}/irasn.txt", "w", encoding="utf-8") as f:
 # 2. IRAN DOMAINS (BOOTMORTIS RELEASE + TLD)
 # ==============================================================================
 print("[-] Step 2: Fetching and sanitizing Iranian domains...")
-# Use reliable release branch URLs with fallbacks
 domains_urls = [
     "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
     "https://github.com/bootmortis/iran-hosted-domains/releases/latest/download/domains.txt"
