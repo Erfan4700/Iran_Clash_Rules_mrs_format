@@ -11,7 +11,7 @@
 
 A high-efficiency, multi-tier traffic engineering and protection suite for Iranian network infrastructure. Provides pre-compiled **Mihomo Rule-Set (`.mrs`)** binaries covering domestic split-tunneling, automated RIPE prefix aggregation, regional anti-phishing, payment gateway safety layers, and granular parental control filters.
 
-[Ruleset Catalog](#-ruleset-catalog--cdn-endpoints) • [Security Specs](#-cyber-threat-mitigation--financial-defense) • [Family Safety](#-parental-control--family-safety) • [Client Setup](#-client-integration) • [راهنمای فارسی](#-راهنمای-جامع-به-زبان-فارسی)
+[Ruleset Catalog](#-ruleset-catalog--cdn-endpoints) • [Security Specs](#-cyber-threat-mitigation--financial-defense) • [Family Safety](#-parental-control--family-safety) • [Client Setup](#-client-integration) • [Attributions](#-upstream-attribution--acknowledgements) • [راهنمای فارسی](#-راهنمای-جامع-به-زبان-فارسی)
 
 </div>
 
@@ -214,7 +214,7 @@ rules:
 ## 🇮🇷 راهنمای جامع به زبان فارسی
 
 <details>
-<summary><b> برای مطالعه مشخصات فنی، امنیتی و کنترل والدین کلیک کنید</b></summary>
+<summary><b> برای مطالعه مشخصات فنی، امنیتی، کنترل والدین و اصالت پروژه کلیک کنید</b></summary>
 <br>
 
 این پروژه یک اکوسیستم تفکیک ترافیک، دفاع سایبری و نظارت خانوادگی برای هسته Mihomo و کلاینت‌های مدرن (مانند Clash Verge Rev، Mihomo Party و FlClash) است که با هدف عملکرد فنی دقیق و دوری از تعاریف اغراق‌آمیز طراحی شده است.
@@ -232,16 +232,33 @@ rules:
 * **بای‌پس کامل در لایه سیستم‌عامل:** برنامه‌های ضروری از جمله تاکسی‌های اینترنتی (اسنپ و تپسی)، فروشگاه‌ها، نرم‌افزارهای بانکی و پیام‌رسان‌ها با شناسه پکیج اختصاصی (`PACKAGE-NAME`) مستقیماً از تونل بای‌پس می‌شوند تا تغییرات احتمالی آی‌پی و CDN باعث کندی یا قطعی آن‌ها نشود.
 * **فشرده‌سازی ریاضی رنج‌های آی‌پی:** رنج‌های شبکه ملی مستقیماً از رجیستری **RIPE NCC** استخراج و فشرده‌سازی ریاضی (Supernetting) شده‌اند تا کمترین حجم جدول روتینگ و بالاترین سرعت تطبیق بسته در هسته به دست آید.
 
+### ۴. منابع، مراجع داده و پیشینه جامعه متن‌باز
+داده‌های این پروژه به صورت کاملاً مستقل و خودکار از مراجع دست‌اول جهانی و داخلی تأمین می‌شوند:
+* **رنج‌های اینترنتی:** مستقیماً از دیتابیس رسمی **RIPE NCC** و سرورهای آینه **APNIC**.
+* **دامنه‌های داخلی:** با تکیه بر فهرست دامنه‌های هاست‌شده پروژه **Bootmortis**.
+* **تبلیغات بومی و فیشینگ:** پالایش‌شده از پایگاه داده پروژه **PersianBlocker**.
+* **قدردانی از پیشگامان:** با احترام ویژه به پروژه **Chocolate4U** که به عنوان پیشگام و تدوین‌کننده استانداردهای اولیه رول‌های کلش در ایران، الهام‌بخش شکل‌گیری این پایپ‌لاین باینری مستقل و مدرن بود.
+
 </details>
 
 ---
 
 ## 🛡️ Upstream Attribution & Acknowledgements
 
-* **Regional Registry Data:** Network ranges provided by the [RIPE Network Coordination Centre](https://www.ripe.net/) and [APNIC Mirror](https://www.apnic.net/).
-* **Domestic Domain Infrastructure:** Curated in collaboration with the community datasets from [@bootmortis](https://github.com/bootmortis).
-* **Ad & Threat Telemetry:** Structured and cross-referenced with [@MasterKia/PersianBlocker](https://github.com/MasterKia/PersianBlocker) and [@curbengh/phishing-filter](https://github.com/curbengh/phishing-filter).
-* **Compiler Engine:** Powered by [Mihomo Core (MetaCubeX)](https://github.com/MetaCubeX/mihomo).
+This project synthesizes data from premier registry databases, threat feeds, and open-source pioneers across the Iranian networking landscape:
+
+* **Official Regional Internet Registries (RIRs):**
+  * Direct IP allocations and ASN datasets provided by the [RIPE Network Coordination Centre](https://www.ripe.net/).
+  * Secondary registry mirror hosted by [APNIC (Asia-Pacific Network Information Centre)](https://www.apnic.net/).
+* **Domestic Domain Intelligence:**
+  * National hosted domain catalog seeded and curated by [@bootmortis](https://github.com/bootmortis/iran-hosted-domains).
+* **Adblocking & Domestic Phishing Telemetry:**
+  * Persian ad networks and domestic smishing feeds sourced from [@MasterKia/PersianBlocker](https://github.com/MasterKia/PersianBlocker).
+  * Global heuristic patterns adapted from [@curbengh/phishing-filter](https://github.com/curbengh/phishing-filter).
+* **Pioneering Foundations & Community Prior Art:**
+  * Special recognition to [@Chocolate4U](https://github.com/Chocolate4U/Iran-clash-rules), whose pioneering work established the baseline architecture for Clash routing in Iran and continues to serve as an emergency fallback mirror in our automated engine.
+* **Compiler & Core Runtime:**
+  * Powered by the cutting-edge network engine from [MetaCubeX (Mihomo Core)](https://github.com/MetaCubeX/mihomo).
 
 ---
 
