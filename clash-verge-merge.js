@@ -1,18 +1,41 @@
 // ==============================================================================
-// 0. USER CONTROL SWITCHES & INTERVALS
+// 0. MASTER CONTROL PANEL
 // ==============================================================================
 
-// 1. HaGeZi Blocklist & Adblock Tier Selection
-// Valid Options: "light" | "normal" | "pro" | "proplus" | "ultimate"
+// 1. Select HaGeZi Adblock Tier: "light" | "normal" | "pro" | "proplus" | "ultimate"
 const HAGEZI_TIER = "proplus";
 
-// 2. Enable Real-Time Cyber Defense (TIF - Threat Intelligence Feeds: Malware & Phishing)
+// 2. Enable Real-Time Cyber Defense (TIF - Malware, Ransomware & Global Phishing)
 const ENABLE_HAGEZI_TIF = true;
 
-// 3. Enforce SafeSearch on Major Search Engines (Google & Bing)
+// 3. Block Hardware & OS Native Telemetry (Windows, Apple, Xiaomi, Android/Samsung)
+const ENABLE_NATIVE_TRACKERS = false;
+
+// 4. Block Dynamic DNS Domains (DuckDNS, No-IP - Advanced C2 & Trojan Defense)
+const ENABLE_DYNDNS_BLOCK = false;
+
+// 5. Block Adult Content & Pornography (Global + Domestic)
+const ENABLE_PORN_FILTER = false;
+
+// 6. Block Gambling, Betting & Casino Portals (Global + Domestic)
+const ENABLE_GAMBLING_FILTER = false;
+
+// 7. Enforce Strict SafeSearch (Google & Bing)
 const ENABLE_SAFE_SEARCH = false;
 
-// 4. Automated Update Intervals (in hours)
+// 8. Direct Routing for Iranian National Infrastructure (.ir, CIDRs & ASNs)
+const ENABLE_IRAN_ROUTING = true;
+
+// 9. Block Iranian In-App Ads & Trackers (With Shaparak Safety Layer)
+const ENABLE_IRAN_ADS = true;
+
+// 10. Block Fake Banking Portals, Smishing & Domestic Phishing
+const ENABLE_IRAN_PHISHING = true;
+
+// 11. Block UDP/443 (QUIC) to Prevent ISP Packet Loss & Speed Throttling
+const ENABLE_QUIC_BLOCK = true;
+
+// Automated Update Intervals (in hours)
 const SECURITY_UPDATE_HOURS = 24;
 const STANDARD_UPDATE_HOURS = 48;
 
@@ -100,7 +123,7 @@ const DOH_ENDPOINTS = Object.freeze([
   "https://9.9.9.9/dns-query"
 ]);
 
-// Precompiled Binary MRS Rule-Providers (All Self-Hosted)
+// Precompiled Binary MRS Rule-Providers
 const PRECOMPILED_PROVIDERS = Object.freeze({
   // Global Protection (HaGeZi Repository)
   "hagezi-main": Object.freeze({
@@ -121,48 +144,128 @@ const PRECOMPILED_PROVIDERS = Object.freeze({
       interval: SECURITY_UPDATE_INTERVAL
     })
   } : {}),
+  ...(ENABLE_DYNDNS_BLOCK ? {
+    "hagezi-dyndns": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziDynDNS.mrs`,
+      path: "./ruleset/HageziDynDNS.mrs",
+      interval: SECURITY_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_NATIVE_TRACKERS ? {
+    "hagezi-windows": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziWindows.mrs`,
+      path: "./ruleset/HageziWindows.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    }),
+    "hagezi-apple": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziApple.mrs`,
+      path: "./ruleset/HageziApple.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    }),
+    "hagezi-xiaomi": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziXiaomi.mrs`,
+      path: "./ruleset/HageziXiaomi.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    }),
+    "hagezi-android": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziAndroid.mrs`,
+      path: "./ruleset/HageziAndroid.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_PORN_FILTER ? {
+    "hagezi-nsfw": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziNSFW.mrs`,
+      path: "./ruleset/HageziNSFW.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_GAMBLING_FILTER ? {
+    "hagezi-gambling": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${HAGEZI_MRS_URL}HageziGambling.mrs`,
+      path: "./ruleset/HageziGambling.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
 
   // Regional Iran Protection & Routing (Iran Rules Repository)
-  "ads-ir": Object.freeze({
-    type: "http",
-    behavior: "domain",
-    format: "mrs",
-    url: `${IRAN_RULES_URL}ads.mrs`,
-    path: "./ruleset/ads.mrs",
-    interval: STANDARD_UPDATE_INTERVAL
-  }),
-  "phishing-ir": Object.freeze({
-    type: "http",
-    behavior: "domain",
-    format: "mrs",
-    url: `${IRAN_RULES_URL}phishing.mrs`,
-    path: "./ruleset/phishing.mrs",
-    interval: SECURITY_UPDATE_INTERVAL
-  }),
-  "ir": Object.freeze({
-    type: "http",
-    behavior: "domain",
-    format: "mrs",
-    url: `${IRAN_RULES_URL}ir.mrs`,
-    path: "./ruleset/ir.mrs",
-    interval: STANDARD_UPDATE_INTERVAL
-  }),
-  "ircidr": Object.freeze({
-    type: "http",
-    behavior: "ipcidr",
-    format: "mrs",
-    url: `${IRAN_RULES_URL}ircidr.mrs`,
-    path: "./ruleset/ircidr.mrs",
-    interval: STANDARD_UPDATE_INTERVAL
-  }),
-  "irasn": Object.freeze({
-    type: "http",
-    behavior: "classical",
-    format: "text",
-    url: `${IRAN_RULES_URL}irasn.txt`,
-    path: "./ruleset/irasn.txt",
-    interval: STANDARD_UPDATE_INTERVAL
-  })
+  ...(ENABLE_IRAN_ADS ? {
+    "ads-ir": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${IRAN_RULES_URL}ads.mrs`,
+      path: "./ruleset/ads.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_IRAN_PHISHING ? {
+    "phishing-ir": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${IRAN_RULES_URL}phishing.mrs`,
+      path: "./ruleset/phishing.mrs",
+      interval: SECURITY_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...((ENABLE_PORN_FILTER || ENABLE_GAMBLING_FILTER) ? {
+    "nsfw-ir": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${IRAN_RULES_URL}nsfw.mrs`,
+      path: "./ruleset/nsfw.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_IRAN_ROUTING ? {
+    "ir": Object.freeze({
+      type: "http",
+      behavior: "domain",
+      format: "mrs",
+      url: `${IRAN_RULES_URL}ir.mrs`,
+      path: "./ruleset/ir.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    }),
+    "ircidr": Object.freeze({
+      type: "http",
+      behavior: "ipcidr",
+      format: "mrs",
+      url: `${IRAN_RULES_URL}ircidr.mrs`,
+      path: "./ruleset/ircidr.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    }),
+    "irasn": Object.freeze({
+      type: "http",
+      behavior: "classical",
+      format: "text",
+      url: `${IRAN_RULES_URL}irasn.txt`,
+      path: "./ruleset/irasn.txt",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {})
 });
 
 // Nameserver Policy: Route domestic queries strictly to domestic resolvers
@@ -213,9 +316,9 @@ const FROZEN_SNIFFER_CONFIG = Object.freeze({
   ])
 });
 
-// Immutable Core Routing Rules (100% Zero-External Geo-Dependency)
+// Immutable Core Routing Rules (Zero-External Geo-Database Dependency)
 const STATIC_CORE_RULES = Object.freeze([
-  // 1. Local Network RFC1918 & Loopback (Direct with Zero External DB)
+  // 1. Local Network RFC1918 & Loopback
   "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve",
   "IP-CIDR,127.0.0.0/8,DIRECT,no-resolve",
   "IP-CIDR,172.16.0.0/12,DIRECT,no-resolve",
@@ -235,20 +338,34 @@ const STATIC_CORE_RULES = Object.freeze([
   // 3. Global Threat Protection (HaGeZi)
   "RULE-SET,hagezi-main,REJECT",
   ...(ENABLE_HAGEZI_TIF ? ["RULE-SET,hagezi-tif,REJECT"] : []),
+  ...(ENABLE_DYNDNS_BLOCK ? ["RULE-SET,hagezi-dyndns,REJECT"] : []),
+  ...(ENABLE_NATIVE_TRACKERS ? [
+    "RULE-SET,hagezi-windows,REJECT",
+    "RULE-SET,hagezi-apple,REJECT",
+    "RULE-SET,hagezi-xiaomi,REJECT",
+    "RULE-SET,hagezi-android,REJECT"
+  ] : []),
 
-  // 4. Regional Ads & Domestic Phishing (Self-Hosted Iran Engine)
-  "RULE-SET,ads-ir,REJECT",
-  "RULE-SET,phishing-ir,REJECT",
+  // 4. Specialized Content Filtering (Porn & Gambling)
+  ...(ENABLE_PORN_FILTER ? ["RULE-SET,hagezi-nsfw,REJECT"] : []),
+  ...(ENABLE_GAMBLING_FILTER ? ["RULE-SET,hagezi-gambling,REJECT"] : []),
+  ...((ENABLE_PORN_FILTER || ENABLE_GAMBLING_FILTER) ? ["RULE-SET,nsfw-ir,REJECT"] : []),
 
-  // 5. Direct Domestic Traffic (Self-Hosted Domains, National TLD, CIDRs, & ASNs)
-  ...MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`),
-  "DOMAIN-SUFFIX,ir,DIRECT",
-  "RULE-SET,ir,DIRECT",
-  "RULE-SET,ircidr,DIRECT,no-resolve",
-  "RULE-SET,irasn,DIRECT,no-resolve",
+  // 5. Regional Ads & Domestic Phishing
+  ...(ENABLE_IRAN_ADS ? ["RULE-SET,ads-ir,REJECT"] : []),
+  ...(ENABLE_IRAN_PHISHING ? ["RULE-SET,phishing-ir,REJECT"] : []),
 
-  // 6. Block QUIC (UDP/443) to Prevent Censorship Throttling
-  "AND,((NETWORK,UDP),(DST-PORT,443)),REJECT"
+  // 6. Direct Domestic Traffic
+  ...(ENABLE_IRAN_ROUTING ? [
+    ...MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`),
+    "DOMAIN-SUFFIX,ir,DIRECT",
+    "RULE-SET,ir,DIRECT",
+    "RULE-SET,ircidr,DIRECT,no-resolve",
+    "RULE-SET,irasn,DIRECT,no-resolve"
+  ] : []),
+
+  // 7. Block QUIC (UDP/443)
+  ...(ENABLE_QUIC_BLOCK ? ["AND,((NETWORK,UDP),(DST-PORT,443)),REJECT"] : [])
 ]);
 
 // ==============================================================================
