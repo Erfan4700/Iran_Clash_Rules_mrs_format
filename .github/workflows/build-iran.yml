@@ -1,277 +1,115 @@
-import os
-import re
-import sys
-import subprocess
-import ipaddress
-import urllib.request
+name: Iran Rules to MRS Automated Builder
 
-OUTPUT_DIR = "output_text"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+on:
+  schedule:
+    # Runs twice a day (03:00 and 15:00 UTC)
+    - cron: '0 3,15 * * *'
+  workflow_dispatch:
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
+permissions:
+  contents: write
 
-def fetch_data(urls, timeout=60):
-    """Safely fetch data with native curl handling redirects and compression."""
-    if isinstance(urls, str):
-        urls = [urls]
-    for url in urls:
-        # استفاده از curl با فلگ --compressed جهت جلوگیری از خطای دیتای فشرده RIPE
-        try:
-            cmd = ["curl", "-sSL", "--compressed", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            if len(result.stdout.strip()) > 50:
-                return result.stdout
-        except Exception as e:
-            print(f"[!] curl notice for {url}: {e}. Retrying via urllib...")
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-        # فال‌بک با urllib
-        try:
-            req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                content = resp.read().decode('utf-8', errors='ignore')
-                if len(content.strip()) > 50:
-                    return content
-        except Exception as e:
-            print(f"[!] urllib notice for {url}: {e}")
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-    return ""
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-def clean_domain(line):
-    """Extract strictly valid, normalized domain names safe for Mihomo MRS."""
-    line = line.split('#')[0].split(';')[0].strip().lower()
-    if not line or line.startswith(('!', '//')):
-        return None
+      - name: Run Core Optimization Engine
+        run: python build.py
 
-    parts = line.split()
-    target = parts[1] if (len(parts) >= 2 and re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^::[0-9a-f]?$', parts[0])) else parts[0]
+      - name: Download Latest Mihomo Core
+        run: |
+          echo "Fetching latest Mihomo release asset URL..."
+          MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-compatible-.*\\.gz$")) | .browser_download_url' | head -n 1)
 
-    target = re.sub(r'^[\|]+', '', target)
-    target = re.sub(r'[\^/].*$', '', target)
-    target = re.sub(r'^https?://', '', target)
-    target = re.sub(r'^\+\.?', '', target)
-    target = re.sub(r'^\*\.?', '', target)
-    target = re.sub(r'^\.', '', target)
-    target = target.strip('.')
+          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+            echo "[X] ERROR: Failed to obtain Mihomo download URL."
+            exit 1
+          fi
 
-    domain_regex = r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$'
-    if re.match(domain_regex, target) and '..' not in target:
-        return target
-    return None
+          echo "Downloading from: $MIHOMO_URL"
+          curl -sL "$MIHOMO_URL" -o mihomo.gz
+          gzip -d mihomo.gz
+          chmod +x mihomo
+          ./mihomo -v
 
-# ==============================================================================
-# 0. ZERO-TRUST CRITICAL INFRASTRUCTURE WHITELIST
-# ==============================================================================
-UNBREAK_WHITELIST = {
-    "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
-    "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "payping.net",
-    "idpay.ir", "jibit.ir", "kavenegar.com", "ghasedak.me", "raychat.io",
-    "divar.ir", "torob.com", "digikala.com", "sana.gov.ir"
-}
+      - name: Compile Text Lists to Binary MRS
+        run: |
+          mkdir -p output_mrs
 
-def is_whitelisted(domain):
-    return any(domain == safe or domain.endswith("." + safe) for safe in UNBREAK_WHITELIST)
+          echo "=== Verifying Generated Text Files ==="
+          ls -lh output_text/
 
-# ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS (RIPE NCC & APNIC OFFICIAL MIRRORS)
-# ==============================================================================
-print("[-] Step 1: Fetching Iranian IP-CIDRs from Authoritative RIRs...")
-ripe_urls = [
-    "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
-    "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest",
-    "http://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest"
-]
+          echo "=== Converting ir.txt ==="
+          ./mihomo convert-ruleset domain text output_text/ir.txt output_mrs/ir.mrs
 
-ripe_raw = fetch_data(ripe_urls, timeout=90)
+          echo "=== Converting ads.txt ==="
+          ./mihomo convert-ruleset domain text output_text/ads.txt output_mrs/ads.mrs
 
-ipv4_nets = []
-ipv6_nets = []
-asns = []
+          echo "=== Converting phishing.txt ==="
+          ./mihomo convert-ruleset domain text output_text/phishing.txt output_mrs/phishing.mrs
 
-if ripe_raw:
-    for line in ripe_raw.splitlines():
-        if not line or line.startswith('#'):
-            continue
-        parts = line.split('|')
-        if len(parts) >= 7 and parts[1] == 'IR':
-            if parts[2] == 'ipv4':
-                try:
-                    first_ip = ipaddress.IPv4Address(parts[3])
-                    last_ip = first_ip + (int(parts[4]) - 1)
-                    ipv4_nets.extend(ipaddress.summarize_range(first_ip, last_ip))
-                except Exception:
-                    pass
-            elif parts[2] == 'ipv6':
-                try:
-                    ipv6_nets.append(ipaddress.IPv6Network(f"{parts[3]}/{parts[4]}", strict=False))
-                except Exception:
-                    pass
-            elif parts[2] == 'asn':
-                asns.append(f"IP-ASN,{parts[3]}")
+          echo "=== Converting nsfw.txt ==="
+          ./mihomo convert-ruleset domain text output_text/nsfw.txt output_mrs/nsfw.mrs
 
-# فال‌بک اضطراری (در صورت آفلاین بودن سرورهای هلند یا بیلد اولیه)
-if not ipv4_nets:
-    print("[!] Primary RIR servers returned empty lines. Engaging emergency backup snapshot...")
-    fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt", timeout=30)
-    for line in fallback_cidrs.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            try:
-                net = ipaddress.ip_network(line, strict=False)
-                if net.version == 4:
-                    ipv4_nets.append(net)
-                else:
-                    ipv6_nets.append(net)
-            except Exception:
-                pass
+          echo "=== Converting ircidr.txt ==="
+          ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
 
-if not asns:
-    fallback_asns = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt", timeout=30)
-    for line in fallback_asns.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
+          # Copy Classical text lists (ASN and Android Package Names)
+          cp output_text/irasn.txt output_mrs/irasn.txt
+          cp output_text/apps.txt output_mrs/apps.txt
 
-if not ipv4_nets or not asns:
-    print("[X] FATAL ERROR: Unable to acquire IP/ASN data. Aborting.")
-    sys.exit(1)
+          echo "=== All MRS and Classical Artifacts Successfully Generated ==="
+          ls -lh output_mrs/
 
-collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
-collapsed_v6 = list(ipaddress.collapse_addresses(ipv6_nets))
-all_collapsed = collapsed_v4 + collapsed_v6
+      - name: Deploy MRS Artifacts to Release Branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: release
+          publish_dir: ./output_mrs
+          destination_dir: ./
+          keep_files: false
 
-print(f"[+] Total CIDRs: {len(all_collapsed)} (IPv4: {len(collapsed_v4)}, IPv6: {len(collapsed_v6)}) | ASNs: {len(asns)}")
+      - name: Update Official Rolling Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG="latest"
+          RELEASE_TITLE="Iran Ruleset Engine (Rolling Update: $(date -u +'%Y-%m-%d %H:%M UTC'))"
+          RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and Android package routing."
 
-with open(f"{OUTPUT_DIR}/ircidr.txt", "w", encoding="utf-8") as f:
-    for net in all_collapsed:
-        f.write(f"{net}\n")
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Updating existing release..."
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+            gh release upload "$RELEASE_TAG" output_mrs/* --clobber
+          else
+            echo "Creating new rolling release..."
+            gh release create "$RELEASE_TAG" output_mrs/* \
+              --title "$RELEASE_TITLE" \
+              --notes "$RELEASE_NOTES" \
+              --target main \
+              --latest
+          fi
 
-with open(f"{OUTPUT_DIR}/irasn.txt", "w", encoding="utf-8") as f:
-    for asn in sorted(set(asns)):
-        f.write(f"{asn}\n")
-
-# ==============================================================================
-# 2. IRAN DOMAINS (BOOTMORTIS WITH INTEGRITY CHECK)
-# ==============================================================================
-print("[-] Step 2: Fetching Iranian domains from Bootmortis...")
-iran_domains = {
-    "digikala.com", "torob.com", "divar.ir", "snapp.cab", "tapsi.cab",
-    "neshan.org", "balad.ir", "bale.ai", "eitaa.com", "rubika.ir",
-    "shaparak.ir", "asanpardakht.ir", "zarinpal.com", "aparat.com"
-}
-
-bootmortis_urls = [
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/domains.txt"
-]
-raw_domains = fetch_data(bootmortis_urls, timeout=35)
-
-if raw_domains:
-    for line in raw_domains.splitlines():
-        d = clean_domain(line)
-        if d:
-            iran_domains.add(d)
-
-if len(iran_domains) < 1000:
-    print("[X] FATAL ERROR: Bootmortis dataset corrupted or unreachable. Aborting.")
-    sys.exit(1)
-
-print(f"[+] Total verified Iran domains: {len(iran_domains)}")
-with open(f"{OUTPUT_DIR}/ir.txt", "w", encoding="utf-8") as f:
-    for d in sorted(iran_domains):
-        f.write(f"{d}\n")
-
-# ==============================================================================
-# 3. IRAN ADS WITH ZERO-TRUST PAYMENT GATEWAY WHITELIST
-# ==============================================================================
-print("[-] Step 3: Fetching Persian ads with strict sub-domain whitelist...")
-ads_urls = [
-    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
-    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt"
-]
-ads_raw = fetch_data(ads_urls, timeout=35)
-
-ad_domains = {"yektanet.com", "sabavision.com", "mediaad.org"}
-if ads_raw:
-    for line in ads_raw.splitlines():
-        d = clean_domain(line)
-        if d and not is_whitelisted(d):
-            ad_domains.add(d)
-
-print(f"[+] Total safe ad domains: {len(ad_domains)}")
-with open(f"{OUTPUT_DIR}/ads.txt", "w", encoding="utf-8") as f:
-    for d in sorted(ad_domains):
-        f.write(f"{d}\n")
-
-# ==============================================================================
-# 4. DOMESTIC PHISHING (IRANIAN SMISHING & FAKE BANK PORTALS WITH WHITELIST)
-# ==============================================================================
-print("[-] Step 4: Fetching domestic phishing & fake portals...")
-phishing_domains = {
-    "phishing-fake-shaparak.top", "ir-sana-gov.com", "sep-shaparak.org"
-}
-
-phishing_urls = [
-    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerPhishing.txt",
-    "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter-hosts.txt"
-]
-phishing_raw = fetch_data(phishing_urls, timeout=35)
-
-KEYWORD_PATTERN = re.compile(r'(?:^|[.-])(?:shaparak|sana|divar|sadad|sep|mellat|melli|sheba)(?:[.-]|$)')
-
-if phishing_raw:
-    for line in phishing_raw.splitlines():
-        d = clean_domain(line)
-        if d and KEYWORD_PATTERN.search(d) and not is_whitelisted(d):
-            phishing_domains.add(d)
-
-print(f"[+] Total verified domestic phishing domains: {len(phishing_domains)}")
-with open(f"{OUTPUT_DIR}/phishing.txt", "w", encoding="utf-8") as f:
-    for d in sorted(phishing_domains):
-        f.write(f"{d}\n")
-
-# ==============================================================================
-# 5. DOMESTIC GAMBLING & CASINOS (PERSIAN BET SITES ONLY)
-# ==============================================================================
-print("[-] Step 5: Compiling Domestic Gambling blocklist...")
-gambling_domains = {
-    "betcart.com", "1xbet.com", "takbet.com", "tinbet.info", "hottbet.com",
-    "pokeriranian.com", "wolfbet.info", "cannonbet.org", "shartbandi.com",
-    "tinybet.info", "hotbet.info", "hazarat.org", "pablobet.info"
-}
-
-gambling_urls = [
-    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt"
-]
-gambling_raw = fetch_data(gambling_urls, timeout=35)
-if gambling_raw:
-    for line in gambling_raw.splitlines():
-        d = clean_domain(line)
-        if d and not is_whitelisted(d):
-            gambling_domains.add(d)
-
-print(f"[+] Total targeted domestic gambling domains: {len(gambling_domains)}")
-with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
-    for d in sorted(gambling_domains):
-        f.write(f"{d}\n")
-
-# ==============================================================================
-# 6. IRANIAN ANDROID APPS (CLASSICAL PACKAGE-NAME RULES)
-# ==============================================================================
-print("[-] Step 6: Compiling Iranian Android Application Packages...")
-ANDROID_PACKAGES = [
-    "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.delivery",
-    "taxi.tap30.passenger", "taxi.tap30.driver", "com.taxsee.taxsee",
-    "neshan.maps", "ir.balad.maps",
-    "com.digikala", "com.digikala.seller", "ir.divar", "com.sheypoor.mobile", "ir.torob",
-    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger",
-    "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel",
-    "ir.tejaratbank.mobile", "com.bmi.mobilebank", "ir.sep.sesame", "com.tosan.shahr",
-    "com.parsian.mobile", "ir.mellat.mbanking", "com.asanpardakht", "ir.zarinpal.android",
-    "ir.payping.app", "ir.blu.banking", "ir.resalat.mb",
-    "ir.mci.mygov", "com.khedmat.app", "ir.post.my", "com.farsitel.bazaar", "ir.mservices.myket"
-]
-
-with open(f"{OUTPUT_DIR}/apps.txt", "w", encoding="utf-8") as f:
-    for pkg in sorted(set(ANDROID_PACKAGES)):
-        f.write(f"PACKAGE-NAME,{pkg}\n")
-print(f"[+] Total Android packages compiled: {len(ANDROID_PACKAGES)}")
+      - name: Purge jsDelivr CDN Cache
+        run: |
+          echo "Waiting 25 seconds for GitHub RAW storage propagation..."
+          sleep 25
+          for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt apps.txt; do
+            echo "Purging CDN cache for $FILE..."
+            STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
+            echo "Purge status for $FILE: $STATUS"
+          done
