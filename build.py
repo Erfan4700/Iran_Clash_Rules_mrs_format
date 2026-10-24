@@ -11,36 +11,35 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
 
-# ایجاد کانتکست SSL جهت جلوگیری از خطای گواهی در رانرهای اوبونتو
 SSL_CONTEXT = ssl.create_default_context()
 SSL_CONTEXT.check_hostname = False
 SSL_CONTEXT.verify_mode = ssl.CERT_NONE
 
-def fetch_data(urls):
-    """Safely fetch text data over HTTPS with curl fallback and relaxed SSL."""
+def fetch_data(urls, timeout=40):
+    """Safely fetch text data with adequate timeout for large registry dumps."""
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
-        # روش اول: تلاش با urllib پایتون
+        # روش اول: urllib
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=35, context=SSL_CONTEXT) as resp:
+            with urllib.request.urlopen(req, timeout=timeout, context=SSL_CONTEXT) as resp:
                 content = resp.read().decode('utf-8', errors='ignore')
                 if len(content.strip()) > 50:
                     return content
         except Exception as e:
-            print(f"[!] urllib warning for {url}: {e}. Retrying with system curl...")
+            print(f"[!] urllib notice for {url}: {e}. Retrying via system curl...")
 
-        # روش دوم: فال‌بک خودکار به curl سیستم در صورت خطای SSL پایتون
+        # روش دوم: curl با تایم‌اوت تطبیق‌پذیر
         try:
             result = subprocess.run(
-                ["curl", "-sSL", "--max-time", "35", "-A", HEADERS['User-Agent'], url],
+                ["curl", "-sSL", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url],
                 capture_output=True, text=True, check=True
             )
             if len(result.stdout.strip()) > 50:
                 return result.stdout
         except Exception as e:
-            print(f"[!] curl warning for {url}: {e}")
+            print(f"[!] curl notice for {url}: {e}")
 
     return ""
 
@@ -80,15 +79,19 @@ def is_whitelisted(domain):
     return any(domain == safe or domain.endswith("." + safe) for safe in UNBREAK_WHITELIST)
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS (RIPE NCC OFFICIAL WITH APNIC MIRROR)
+# 1. IRAN IP-CIDRS & ASNS (RIPE NCC & APNIC OFFICIAL MIRRORS)
 # ==============================================================================
-print("[-] Step 1: Fetching Iranian IP-CIDRs from RIPE NCC & Mirrors...")
+print("[-] Step 1: Fetching Iranian IP-CIDRs from Authoritative RIRs (8MB+ dataset)...")
+# آدرس‌های دقیق با اصلاح ساختار مسیر APNIC و پروتکل‌های چندگانه
 ripe_urls = [
     "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
-    "https://ftp.ripe.net/ripe/stats/delegated-ripencc-latest",
-    "https://ftp.apnic.net/pub/stats/ripencc/delegated-ripencc-latest"
+    "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest",
+    "http://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
+    "http://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest"
 ]
-ripe_raw = fetch_data(ripe_urls)
+
+# افزایش مهلت دانلود به ۹۰ ثانیه برای دانلود کامل دیتاست سنگین ۸ مگابایتی
+ripe_raw = fetch_data(ripe_urls, timeout=90)
 
 ipv4_nets = []
 ipv6_nets = []
@@ -115,10 +118,34 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# Failsafe: Abort immediately if authoritative RIR mirrors are unreachable
-# This preserves the intact, working build from the previous run
+# فال‌بک خودکفا و ۱۰۰٪ مستقل (استفاده از آخرین خروجی سالم در برنچ release مخزن خودتان)
+if not ipv4_nets:
+    print("[!] Authoritative RIR servers delayed/unreachable. Engaging Self-Repository Fallback...")
+    self_cidr_url = "https://raw.githubusercontent.com/Erfan4700/Iran_Clash_Rules_mrs_format/release/ircidr.txt"
+    self_raw_cidrs = fetch_data(self_cidr_url, timeout=30)
+    for line in self_raw_cidrs.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            try:
+                net = ipaddress.ip_network(line, strict=False)
+                if net.version == 4:
+                    ipv4_nets.append(net)
+                else:
+                    ipv6_nets.append(net)
+            except Exception:
+                pass
+
+if not asns:
+    self_asn_url = "https://raw.githubusercontent.com/Erfan4700/Iran_Clash_Rules_mrs_format/release/irasn.txt"
+    self_raw_asns = fetch_data(self_asn_url, timeout=30)
+    for line in self_raw_asns.splitlines():
+        line = line.strip()
+        if line and not line.startswith('#'):
+            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
+
+# اگر در نخستین بیلد تاریخی هیچ دیتایی نبود توقف ایمن
 if not ipv4_nets or not asns:
-    print("[X] FATAL ERROR: Authoritative RIR mirrors (RIPE/APNIC) failed. Aborting to protect rule integrity.")
+    print("[X] FATAL ERROR: Unable to acquire IP/ASN data from RIRs or local snapshot. Aborting.")
     sys.exit(1)
 
 collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
@@ -149,7 +176,7 @@ bootmortis_urls = [
     "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
     "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/domains.txt"
 ]
-raw_domains = fetch_data(bootmortis_urls)
+raw_domains = fetch_data(bootmortis_urls, timeout=35)
 
 if raw_domains:
     for line in raw_domains.splitlines():
@@ -174,7 +201,7 @@ ads_urls = [
     "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
     "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt"
 ]
-ads_raw = fetch_data(ads_urls)
+ads_raw = fetch_data(ads_urls, timeout=35)
 
 ad_domains = {"yektanet.com", "sabavision.com", "mediaad.org"}
 if ads_raw:
@@ -200,7 +227,7 @@ phishing_urls = [
     "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerPhishing.txt",
     "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter-hosts.txt"
 ]
-phishing_raw = fetch_data(phishing_urls)
+phishing_raw = fetch_data(phishing_urls, timeout=35)
 
 KEYWORD_PATTERN = re.compile(r'(?:^|[.-])(?:shaparak|sana|divar|sadad|sep|mellat|melli|sheba)(?:[.-]|$)')
 
@@ -228,7 +255,7 @@ gambling_domains = {
 gambling_urls = [
     "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt"
 ]
-gambling_raw = fetch_data(gambling_urls)
+gambling_raw = fetch_data(gambling_urls, timeout=35)
 if gambling_raw:
     for line in gambling_raw.splitlines():
         d = clean_domain(line)
