@@ -23,7 +23,7 @@ const ENABLE_GAMBLING_FILTER = false;
 // 7. Enforce Strict SafeSearch (Google & Bing)
 const ENABLE_SAFE_SEARCH = false;
 
-// 8. Direct Routing for Iranian Android Native Applications (Snapp, Tapsi, Banks)
+// 8. Direct Routing for Iranian Android & Windows Applications (Massive Database)
 const ENABLE_IRAN_APPS = true;
 
 // 9. Direct Routing for Iranian National Infrastructure (.ir, CIDRs & ASNs)
@@ -81,7 +81,6 @@ const MANUAL_DOMAINS = Object.freeze([
   "nobitex.net", "exir.io", "wallex.net"
 ]);
 
-// Precomputed domestic routing rules (Pre-flattened to eliminate runtime allocations)
 const PRECOMPUTED_MANUAL_RULES = Object.freeze(MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`));
 const MANUAL_WILDCARDS = Object.freeze(MANUAL_DOMAINS.map(d => `+.${d}`));
 
@@ -363,7 +362,7 @@ const STATIC_CORE_RULES = Object.freeze([
   ...(ENABLE_IRAN_ADS ? ["RULE-SET,ads-ir,REJECT"] : []),
   ...(ENABLE_IRAN_PHISHING ? ["RULE-SET,phishing-ir,REJECT"] : []),
 
-  // 6. Direct Android Applications Bypass
+  // 6. Direct Android & Windows Applications Bypass
   ...(ENABLE_IRAN_APPS ? ["RULE-SET,apps-ir,DIRECT,no-resolve"] : []),
 
   // 7. Direct Domestic Traffic
