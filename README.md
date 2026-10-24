@@ -19,7 +19,7 @@ An enterprise-grade, memory-optimized ruleset suite providing automated **Mihomo
 
 ---
 
-## 📦 1. Available Rulesets & Fast CDN URLs
+## 📦 Available Rulesets & Fast CDN URLs
 
 All files are hosted on the `release` branch and served through high-speed CDN edges:
 
@@ -30,10 +30,11 @@ All files are hosted on the `release` branch and served through high-speed CDN e
 | **`irasn.txt`** | `classical` | ![irasn Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/irasn.txt?branch=release&label=&color=blueviolet) | `DIRECT` | Complete Autonomous System Numbers (ASN) of domestic ISPs | [CDN Link](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/irasn.txt) |
 | **`ads.mrs`** | `domain` | ![ads Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/ads.mrs?branch=release&label=&color=orange) | `REJECT` | Domestic adblocker with payment gateway unbreak protection | [CDN Link](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ads.mrs) |
 | **`phishing.mrs`** | `domain` | ![phishing Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/phishing.mrs?branch=release&label=&color=critical) | `REJECT` | Fraudulent banking portals, fake Shaparak, and smishing domains | [CDN Link](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/phishing.mrs) |
+| **`nsfw.mrs`** | `domain` | ![nsfw Size](https://img.shields.io/github/size/Erfan4700/Iran_Clash_Rules_mrs_format/nsfw.mrs?branch=release&label=&color=critical) | `REJECT` | Domestic gambling, betting portals & adult content | [CDN Link](https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/nsfw.mrs) |
 
 ---
 
-## 🎁 2. All-in-One Merge Script (`clash-verge-merge.js`)
+## 🎁 All-in-One Merge Script (`clash-verge-merge.js`)
 
 To effortlessly combine this repository with our global adblock repository, use [`clash-verge-merge.js`](./clash-verge-merge.js).
 
@@ -47,7 +48,7 @@ This script acts as the master coordinator for **Clash Verge Rev** and **Mihomo 
 
 ---
 
-## 📖 3. Quick Setup Guide (Clash Verge Rev)
+## 📖 Quick Setup Guide (Clash Verge Rev)
 
 1. Open **Clash Verge Rev**.
 2. Go to the **Script** tab on the left-side panel.
@@ -55,28 +56,6 @@ This script acts as the master coordinator for **Clash Verge Rev** and **Mihomo 
 4. Copy the entire contents of [`clash-verge-merge.js`](./clash-verge-merge.js) and paste it into the editor.
 5. Click **Save** and make sure the switch is **ON**.
 6. Switch to the **Profiles** tab and click **Refresh** (🔄) on your profile.
-
----
-
-## 🔄 4. Automated CI/CD Architecture
-
-```text
-[Primary Upstream Feeds]
- (RIPE NCC / Bootmortis / MasterKia / Phishing Feeds)
-                     │
-                     ▼
-         [GitHub Actions Runner] (Scheduled Twice Daily at 03:00 & 15:00 UTC)
-                     │
-                     ├─► Python Engine: Aggregates & Collapses Subnets
-                     ├─► Python Engine: Applies Payment Gateway Whitelist
-                     ├─► Mihomo Core: Compiles Text Lists into Binary .mrs
-                     │
-                     ▼
-                [Deployment]
-                     ├─► Pushes binaries to 'release' branch
-                     ├─► Creates official timestamped GitHub Release
-                     └─► Sends instant cache purge pulse to jsDelivr CDN
-```
 
 ---
 
