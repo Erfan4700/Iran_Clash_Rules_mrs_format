@@ -1,57 +1,78 @@
 import os
 import re
+import sys
 import ipaddress
 import urllib.request
 
 OUTPUT_DIR = "output_text"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0'}
 
 def fetch_data(urls):
-    """Try fetching data from multiple URLs with fallback."""
+    """Safely fetch text data over HTTPS with robust fallback mechanism."""
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
         try:
             req = urllib.request.Request(url, headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=25) as resp:
+            with urllib.request.urlopen(req, timeout=35) as resp:
                 content = resp.read().decode('utf-8', errors='ignore')
-                if len(content.strip()) > 100:
+                if len(content.strip()) > 50:
                     return content
         except Exception as e:
             print(f"[!] Warning fetching {url}: {e}")
     return ""
 
 def clean_domain(line):
-    line = line.strip().lower()
-    if not line or line.startswith(('#', '!', ';', '//')):
+    """Extract strictly valid, normalized domain names safe for Mihomo MRS."""
+    line = line.split('#')[0].split(';')[0].strip().lower()
+    if not line or line.startswith(('!', '//')):
         return None
-    line = re.sub(r'^[\|]+', '', line)
-    line = re.sub(r'[\^/].*$', '', line)
-    line = re.sub(r'^https?://', '', line)
-    line = re.sub(r'^\+\.?', '', line)
-    line = re.sub(r'^\*\.?', '', line)
-    line = re.sub(r'^\.', '', line)
-    line = line.strip()
-    if re.match(r'^[a-z0-9.-]+\.[a-z]{2,}$', line):
-        return line
+
+    # Handle hosts file structure (0.0.0.0 domain.com)
+    parts = line.split()
+    target = parts[1] if (len(parts) >= 2 and re.match(r'^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^::[0-9a-f]?$', parts[0])) else parts[0]
+
+    target = re.sub(r'^[\|]+', '', target)
+    target = re.sub(r'[\^/].*$', '', target)
+    target = re.sub(r'^https?://', '', target)
+    target = re.sub(r'^\+\.?', '', target)
+    target = re.sub(r'^\*\.?', '', target)
+    target = re.sub(r'^\.', '', target)
+    target = target.strip('.')
+
+    # RFC 1035 Domain regex
+    domain_regex = r'^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$'
+    if re.match(domain_regex, target) and '..' not in target:
+        return target
     return None
 
 # ==============================================================================
-# 1. IRAN IP-CIDRS & ASNS
+# 0. ZERO-TRUST CRITICAL INFRASTRUCTURE WHITELIST
 # ==============================================================================
-print("[-] Step 1: Fetching Iranian IP-CIDRs...")
-ripe_urls = [
-    "http://ftp.ripe.net/ripe/stats/delegated-ripencc-latest",
-    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt"
-]
+UNBREAK_WHITELIST = {
+    "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
+    "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "payping.net",
+    "idpay.ir", "jibit.ir", "kavenegar.com", "ghasedak.me", "raychat.io",
+    "divar.ir", "torob.com", "digikala.com", "sana.gov.ir"
+}
+
+def is_whitelisted(domain):
+    """Accurately check domain and subdomains without substring vulnerabilities."""
+    return any(domain == safe or domain.endswith("." + safe) for safe in UNBREAK_WHITELIST)
+
+# ==============================================================================
+# 1. IRAN IP-CIDRS & ASNS (RIPE NCC WITH FAILSAFE & COLLAPSE)
+# ==============================================================================
+print("[-] Step 1: Fetching Iranian IP-CIDRs from RIPE NCC (HTTPS)...")
+ripe_url = "https://ftp.ripe.net/ripe/stats/delegated-ripencc-latest"
+ripe_raw = fetch_data(ripe_url)
 
 ipv4_nets = []
 ipv6_nets = []
 asns = []
 
-ripe_raw = fetch_data(ripe_urls[0])
 if ripe_raw:
     for line in ripe_raw.splitlines():
         if not line or line.startswith('#'):
@@ -73,90 +94,71 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-if not ipv4_nets:
-    print("[!] Using fallback mirror for Iran CIDRs...")
-    mirror_raw = fetch_data(ripe_urls[1])
-    for line in mirror_raw.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            try:
-                net = ipaddress.ip_network(line, strict=False)
-                if net.version == 4:
-                    ipv4_nets.append(net)
-                else:
-                    ipv6_nets.append(net)
-            except Exception:
-                pass
+# Failsafe: Both CIDRs and ASNs must be populated
+if not ipv4_nets or not asns:
+    print("[X] FATAL ERROR: RIPE NCC fetch failed or dataset incomplete. Aborting.")
+    sys.exit(1)
 
-collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets)) if ipv4_nets else []
-collapsed_v6 = list(ipaddress.collapse_addresses(ipv6_nets)) if ipv6_nets else []
+collapsed_v4 = list(ipaddress.collapse_addresses(ipv4_nets))
+collapsed_v6 = list(ipaddress.collapse_addresses(ipv6_nets))
 all_collapsed = collapsed_v4 + collapsed_v6
 
-print(f"[+] Total CIDRs: {len(all_collapsed)} (IPv4: {len(collapsed_v4)}, IPv6: {len(collapsed_v6)}) | Total ASNs: {len(asns)}")
+print(f"[+] Total CIDRs: {len(all_collapsed)} (IPv4: {len(collapsed_v4)}, IPv6: {len(collapsed_v6)}) | ASNs: {len(asns)}")
 
 with open(f"{OUTPUT_DIR}/ircidr.txt", "w", encoding="utf-8") as f:
     for net in all_collapsed:
         f.write(f"{net}\n")
 
-if not asns:
-    asn_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt")
-    for line in asn_raw.splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            asns.append(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
-
 with open(f"{OUTPUT_DIR}/irasn.txt", "w", encoding="utf-8") as f:
-    for asn in sorted(set(asns)) if asns else ["IP-ASN,58224", "IP-ASN,197207"]:
+    for asn in sorted(set(asns)):
         f.write(f"{asn}\n")
 
 # ==============================================================================
-# 2. IRAN DOMAINS
+# 2. IRAN DOMAINS (BOOTMORTIS WITH INTEGRITY CHECK)
 # ==============================================================================
-print("[-] Step 2: Fetching Iranian domains...")
-domains_urls = [
-    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir.txt",
-    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/domains.txt"
-]
-
+print("[-] Step 2: Fetching Iranian domains from Bootmortis...")
 iran_domains = {
     "digikala.com", "torob.com", "divar.ir", "snapp.cab", "tapsi.cab",
     "neshan.org", "balad.ir", "bale.ai", "eitaa.com", "rubika.ir",
     "shaparak.ir", "asanpardakht.ir", "zarinpal.com", "aparat.com"
 }
 
-raw_domains = fetch_data(domains_urls)
-for line in raw_domains.splitlines():
-    d = clean_domain(line)
-    if d:
-        iran_domains.add(d)
+bootmortis_urls = [
+    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
+    "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/main/domains/domains.txt"
+]
+raw_domains = fetch_data(bootmortis_urls)
 
-print(f"[+] Total Iran domains: {len(iran_domains)}")
+if raw_domains:
+    for line in raw_domains.splitlines():
+        d = clean_domain(line)
+        if d:
+            iran_domains.add(d)
+
+if len(iran_domains) < 1000:
+    print("[X] FATAL ERROR: Bootmortis dataset corrupted or unreachable. Aborting.")
+    sys.exit(1)
+
+print(f"[+] Total verified Iran domains: {len(iran_domains)}")
 with open(f"{OUTPUT_DIR}/ir.txt", "w", encoding="utf-8") as f:
     for d in sorted(iran_domains):
         f.write(f"{d}\n")
 
 # ==============================================================================
-# 3. IRAN ADS WITH UNBREAK WHITELIST
+# 3. IRAN ADS WITH ZERO-TRUST PAYMENT GATEWAY WHITELIST
 # ==============================================================================
-print("[-] Step 3: Fetching Persian ads with safety layer...")
+print("[-] Step 3: Fetching Persian ads with strict sub-domain whitelist...")
 ads_urls = [
     "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
-    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ads.txt"
+    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt"
 ]
-
-UNBREAK_WHITELIST = {
-    "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
-    "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "payping.net",
-    "idpay.ir", "jibit.ir", "kavenegar.com", "ghasedak.me", "raychat.io"
-}
+ads_raw = fetch_data(ads_urls)
 
 ad_domains = {"yektanet.com", "sabavision.com", "mediaad.org"}
-raw_ads = fetch_data(ads_urls)
-for line in raw_ads.splitlines():
-    parts = line.split()
-    if parts:
-        d = clean_domain(parts[-1])
-        if d and not any(safe in d for safe in UNBREAK_WHITELIST):
+if ads_raw:
+    for line in ads_raw.splitlines():
+        d = clean_domain(line)
+        if d and not is_whitelisted(d):
             ad_domains.add(d)
 
 print(f"[+] Total safe ad domains: {len(ad_domains)}")
@@ -165,47 +167,76 @@ with open(f"{OUTPUT_DIR}/ads.txt", "w", encoding="utf-8") as f:
         f.write(f"{d}\n")
 
 # ==============================================================================
-# 4. PHISHING BLOCKLIST
+# 4. DOMESTIC PHISHING (IRANIAN SMISHING & FAKE BANK PORTALS WITH WHITELIST)
 # ==============================================================================
-print("[-] Step 4: Fetching phishing blocklist...")
-phishing_urls = [
-    "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter-hosts.txt",
-    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/phishing.txt"
-]
+print("[-] Step 4: Fetching domestic phishing & fake portals...")
+phishing_domains = {
+    "phishing-fake-shaparak.top", "ir-sana-gov.com", "sep-shaparak.org"
+}
 
-phishing_domains = {"phishing-fake-shaparak.top"}
-raw_phishing = fetch_data(phishing_urls)
-for line in raw_phishing.splitlines():
-    parts = line.split()
-    if parts:
-        d = clean_domain(parts[-1])
-        if d:
+phishing_urls = [
+    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerPhishing.txt",
+    "https://raw.githubusercontent.com/curbengh/phishing-filter/master/phishing-filter-hosts.txt"
+]
+phishing_raw = fetch_data(phishing_urls)
+
+KEYWORD_PATTERN = re.compile(r'(?:^|[.-])(?:shaparak|sana|divar|sadad|sep|mellat|melli|sheba)(?:[.-]|$)')
+
+if phishing_raw:
+    for line in phishing_raw.splitlines():
+        d = clean_domain(line)
+        # فقط در صورتی اضافه کن که در وایت‌لیست بانکی نباشد (حل باگ مسدود شدن درگاه‌ها)
+        if d and KEYWORD_PATTERN.search(d) and not is_whitelisted(d):
             phishing_domains.add(d)
 
-print(f"[+] Total phishing domains: {len(phishing_domains)}")
+print(f"[+] Total verified domestic phishing domains: {len(phishing_domains)}")
 with open(f"{OUTPUT_DIR}/phishing.txt", "w", encoding="utf-8") as f:
     for d in sorted(phishing_domains):
         f.write(f"{d}\n")
 
 # ==============================================================================
-# 5. ADULT CONTENT & GAMBLING (NSFW / PARENTAL CONTROL)
+# 5. DOMESTIC GAMBLING & CASINOS (PERSIAN BET SITES ONLY)
 # ==============================================================================
-print("[-] Step 5: Compiling Adult Content and Gambling blocklist...")
-nsfw_urls = [
-    "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/nsfw.txt",
-    "https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/gambling-porn/hosts"
+print("[-] Step 5: Compiling Domestic Gambling blocklist...")
+gambling_domains = {
+    "betcart.com", "1xbet.com", "takbet.com", "tinbet.info", "hottbet.com",
+    "pokeriranian.com", "wolfbet.info", "cannonbet.org", "shartbandi.com",
+    "tinybet.info", "hotbet.info", "hazarat.org", "pablobet.info"
+}
+
+gambling_urls = [
+    "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt"
+]
+gambling_raw = fetch_data(gambling_urls)
+if gambling_raw:
+    for line in gambling_raw.splitlines():
+        d = clean_domain(line)
+        if d and not is_whitelisted(d):
+            gambling_domains.add(d)
+
+print(f"[+] Total targeted domestic gambling domains: {len(gambling_domains)}")
+with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
+    for d in sorted(gambling_domains):
+        f.write(f"{d}\n")
+
+# ==============================================================================
+# 6. IRANIAN ANDROID APPS (CLASSICAL PACKAGE-NAME RULES)
+# ==============================================================================
+print("[-] Step 6: Compiling Iranian Android Application Packages...")
+ANDROID_PACKAGES = [
+    "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.delivery",
+    "taxi.tap30.passenger", "taxi.tap30.driver", "com.taxsee.taxsee",
+    "neshan.maps", "ir.balad.maps",
+    "com.digikala", "com.digikala.seller", "ir.divar", "com.sheypoor.mobile", "ir.torob",
+    "org.bale.messenger", "ir.eitaa.messenger", "ir.resaneh1.iptv", "org.soroushplus.messenger",
+    "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel",
+    "ir.tejaratbank.mobile", "com.bmi.mobilebank", "ir.sep.sesame", "com.tosan.shahr",
+    "com.parsian.mobile", "ir.mellat.mbanking", "com.asanpardakht", "ir.zarinpal.android",
+    "ir.payping.app", "ir.blu.banking", "ir.resalat.mb",
+    "ir.mci.mygov", "com.khedmat.app", "ir.post.my", "com.farsitel.bazaar", "ir.mservices.myket"
 ]
 
-nsfw_domains = {"betcart.com", "1xbet.com", "takbet.com", "pornhub.com", "xvideos.com"}
-raw_nsfw = fetch_data(nsfw_urls)
-for line in raw_nsfw.splitlines():
-    parts = line.split()
-    if parts:
-        d = clean_domain(parts[-1])
-        if d:
-            nsfw_domains.add(d)
-
-print(f"[+] Total adult/gambling domains: {len(nsfw_domains)}")
-with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
-    for d in sorted(nsfw_domains):
-        f.write(f"{d}\n")
+with open(f"{OUTPUT_DIR}/apps.txt", "w", encoding="utf-8") as f:
+    for pkg in sorted(set(ANDROID_PACKAGES)):
+        f.write(f"PACKAGE-NAME,{pkg}\n")
+print(f"[+] Total Android packages compiled: {len(ANDROID_PACKAGES)}")
