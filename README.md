@@ -90,10 +90,6 @@ This script acts as the master coordinator for **Clash Verge Rev** and **Mihomo 
 
 ---
 
-## 📄 License
-
-Distributed under the **MIT License**. Upstream intellectual property and data rights belong to their respective registries and maintainers.
-
 ## 🌐 The Complete Ecosystem (Related Projects)
 
 This repository is part of a two-pillar, self-hosted routing & security suite for Mihomo / Clash:
@@ -103,3 +99,9 @@ This repository is part of a two-pillar, self-hosted routing & security suite fo
 * ⚡ **Unified Driver:** [`clash-verge-merge.js`](./clash-verge-merge.js) — The master integration script combining both repositories into a zero-leak Clash profile.
 
 ---
+
+## 📄 License
+
+Distributed under the **MIT License**. Upstream intellectual property and data rights belong to their respective registries and maintainers.
+
+
