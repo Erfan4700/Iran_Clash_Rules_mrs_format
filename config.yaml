@@ -1,0 +1,355 @@
+# ==============================================================================
+# MIHOMO / CLASH.META STANDALONE HIGH-PERFORMANCE PROFILE
+# 100% ZERO-GEOIP OVERHEAD | 100% BINARY MRS | PURE DOMESTIC SPLIT-TUNNELING
+# ==============================================================================
+
+port: 7890
+socks-port: 7891
+mixed-port: 7892
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+
+# موتور بهینه‌سازی عملکرد (حداکثر سرعت و حداقل پینگ)
+tcp-concurrent: true
+unified-delay: true
+find-process-mode: "off"
+keep-alive-idle: 600
+keep-alive-interval: 15
+
+# حذف کامل سربار دیتابیس‌های سنگین GeoIP (صرفه‌جویی بیش از ۳۰ مگابایت رم)
+geodata-mode: false
+geo-auto-update: false
+
+experimental:
+  quic-go-disable-ecn: true
+
+profile:
+  store-fake-ip: true
+  store-selected: true
+
+# ==============================================================================
+# SNIFFER CONFIGURATION (تشخیص دقیق پکت‌های رمزنگاری‌شده TLS)
+# ==============================================================================
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: false
+  sniff:
+    TLS:
+      ports: [443, 8443, 2053, 2083, 2087, 2096]
+    HTTP:
+      ports: [80, 8080, 8880]
+  skip-dst-address:
+    - 127.0.0.0/8
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+  skip-domain:
+    - "Mijia Cloud"
+    - "+.push.apple.com"
+    - "+.apple.com"
+    - "+.lan"
+    - "+.local"
+    - "+.home.arpa"
+    - "+.ir"
+    - "+.neshan.org"
+    - "+.rajman.org"
+    - "+.cedarmaps.com"
+    - "+.snapp.cab"
+    - "+.snapp.tax"
+    - "+.snappcloud.io"
+    - "+.snapp.supply"
+    - "+.tapsi.cab"
+    - "+.tap33.me"
+    - "+.taximaxim.com"
+    - "+.torob.com"
+    - "+.divarcdn.com"
+    - "+.digikala.com"
+    - "+.zarinpal.com"
+    - "+.nobitex.net"
+
+# ==============================================================================
+# DNS ENGINE (ضد مسمومیت، تفکیک مستقیم ایران، عدم نشت ترافیک)
+# ==============================================================================
+dns:
+  enable: true
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  cache-algorithm: arc
+  cache-size: 4096
+  respect-rules: false
+  direct-nameserver-follow-policy: true
+  use-system-hosts: true
+  use-hosts: true
+  ipv6: false
+  prefer-h3: false
+
+  # استخر دی‌ان‌اس بوت‌استراپ
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+    - 193.186.32.32
+
+  # استخر ضد مسمومیت برای ارتباط با سرورهای فیلترشکن
+  proxy-server-nameserver:
+    - https://223.5.5.5/dns-query
+    - 223.5.5.5
+    - 119.29.29.29
+    - 193.186.32.32
+
+  # دی‌ان‌اس اختصاصی ترافیک داخلی ایران
+  direct-nameserver:
+    - 193.186.32.32
+    - 217.218.127.127
+    - 217.218.155.155
+
+  # هدایت ایمن DoH بین‌المللی از داخل تونل پروکسی
+  nameserver:
+    - https://1.1.1.1/dns-query#PROXY
+    - https://8.8.8.8/dns-query#PROXY
+    - https://9.9.9.9/dns-query#PROXY
+
+  # سیاست‌گذاری تفکیک قطعی دامنه‌های داخلی به سمت ریزالورهای ایران
+  nameserver-policy:
+    "+.ir": [193.186.32.32, 217.218.127.127, 217.218.155.155]
+    "rule-set:ir": [193.186.32.32, 217.218.127.127, 217.218.155.155]
+    "supl.google.com": [193.186.32.32, 217.218.127.127]
+    "+.supl.google.com": [193.186.32.32, 217.218.127.127]
+    "+.neshan.org": [193.186.32.32, 217.218.127.127]
+    "+.rajman.org": [193.186.32.32, 217.218.127.127]
+    "+.cedarmaps.com": [193.186.32.32, 217.218.127.127]
+    "+.snapp.cab": [193.186.32.32, 217.218.127.127]
+    "+.snapp.tax": [193.186.32.32, 217.218.127.127]
+    "+.snappcloud.io": [193.186.32.32, 217.218.127.127]
+    "+.snapp.supply": [193.186.32.32, 217.218.127.127]
+    "+.tapsi.cab": [193.186.32.32, 217.218.127.127]
+    "+.tap33.me": [193.186.32.32, 217.218.127.127]
+    "+.taximaxim.com": [193.186.32.32, 217.218.127.127]
+    "+.torob.com": [193.186.32.32, 217.218.127.127]
+    "+.divarcdn.com": [193.186.32.32, 217.218.127.127]
+    "+.digikala.com": [193.186.32.32, 217.218.127.127]
+    "+.dl150m.info": [193.186.32.32, 217.218.127.127]
+    "+.dl175m.info": [193.186.32.32, 217.218.127.127]
+    "+.linkulu.com": [193.186.32.32, 217.218.127.127]
+    "+.film2media.cam": [193.186.32.32, 217.218.127.127]
+    "+.zarinpal.com": [193.186.32.32, 217.218.127.127]
+    "+.zarin.link": [193.186.32.32, 217.218.127.127]
+    "+.payping.net": [193.186.32.32, 217.218.127.127]
+    "+.ramzinex.com": [193.186.32.32, 217.218.127.127]
+    "+.abantether.com": [193.186.32.32, 217.218.127.127]
+    "+.nobitex.net": [193.186.32.32, 217.218.127.127]
+    "+.exir.io": [193.186.32.32, 217.218.127.127]
+    "+.wallex.net": [193.186.32.32, 217.218.127.127]
+
+  # فیلتر فیک‌آی‌پی جهت پیشگیری از اختلال در بازی‌ها، سامانه‌های موقعیت‌یاب و پروتکل‌های شبکه
+  fake-ip-filter:
+    - "+.ir"
+    - "rule-set:ir"
+    - "+.lan"
+    - "+.local"
+    - "+.home.arpa"
+    - "captive.apple.com"
+    - "+.connectivitycheck.gstatic.com"
+    - "detectportal.firefox.com"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "time.apple.com"
+    - "time.google.com"
+    - "time.windows.com"
+    - "time.nist.gov"
+    - "+.pool.ntp.org"
+    - "+.ntp.org"
+    - "+.steamcontent.com"
+    - "+.battlenet.com"
+    - "+.battle.net"
+    - "+.ea.com"
+    - "stun.*"
+    - "*.stun.*"
+    - "supl.google.com"
+    - "+.supl.google.com"
+    - "location.services.mozilla.com"
+    - "+.neshan.org"
+    - "+.rajman.org"
+    - "+.cedarmaps.com"
+    - "+.snapp.cab"
+    - "+.snapp.tax"
+    - "+.snappcloud.io"
+    - "+.snapp.supply"
+    - "+.tapsi.cab"
+    - "+.tap33.me"
+    - "+.taximaxim.com"
+    - "+.torob.com"
+    - "+.divarcdn.com"
+    - "+.digikala.com"
+    - "+.zarinpal.com"
+    - "+.nobitex.net"
+
+# ==============================================================================
+# PROXY GROUPS (گروه‌های پروکسی استاندارد)
+# ==============================================================================
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - AUTO
+      - DIRECT
+
+  - name: AUTO
+    type: url-test
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies: []
+
+# در این بخش کانفیگ‌های VLESS, Trojan, Hysteria2 و... شما قرار می‌گیرند
+proxies: []
+
+# ==============================================================================
+# RULE-PROVIDERS (کامپایل‌شده باینری MRS و قوانین کلاسیک)
+# ==============================================================================
+rule-providers:
+  # ۱. دفاع سایبری و ادبلاکر جهانی هگزی (HaGeZi)
+  hagezi-main:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/HaGeZi_BlockLists_mrs_format@release/HageziProPlus.mrs"
+    path: ./ruleset/HageziProPlus.mrs
+    interval: 172800
+
+  hagezi-tif:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/HaGeZi_BlockLists_mrs_format@release/HageziTIF.mrs"
+    path: ./ruleset/HageziTIF.mrs
+    interval: 86400
+
+  # ۲. دفاع در برابر فیشینگ، درگاه‌های جعلی و تبلیغات ایران
+  phishing-ir:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/phishing.mrs"
+    path: ./ruleset/phishing.mrs
+    interval: 86400
+
+  ads-ir:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ads.mrs"
+    path: ./ruleset/ads.mrs
+    interval: 172800
+
+  # ۳. تفکیک در لایه سیستم‌عامل برای اپلیکیشن‌های اندروید (اسنپ، تپسی، بانک‌ها)
+  apps-ir:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/apps.txt"
+    path: ./ruleset/apps.txt
+    interval: 172800
+
+  # ۴. ترافیک ملی و زیرساخت اینترنت ایران
+  ir:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ir.mrs"
+    path: ./ruleset/ir.mrs
+    interval: 172800
+
+  ircidr:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/ircidr.mrs"
+    path: ./ruleset/ircidr.mrs
+    interval: 172800
+
+  irasn:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/irasn.txt"
+    path: ./ruleset/irasn.txt
+    interval: 172800
+
+# ==============================================================================
+# RULES (اولویت‌بندی مهندسی‌شده قوانین مسیریابی پکت‌ها)
+# ==============================================================================
+rules:
+  # ۱. شبکه محلی و رنج‌های خصوصی RFC1918 (بدون نیاز به GeoIP)
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR,255.255.255.255/32,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # ۲. پورت‌های موقعیت‌یاب A-GPS و دانلود تورنت
+  - DST-PORT,7275,DIRECT
+  - DST-PORT,6881-6889,DIRECT
+  - DST-PORT,51413,DIRECT
+
+  # ۳. دفاع در برابر تهدیدات سایبری جهانی، بدافزار و باج‌افزارها (HaGeZi TIF & Pro++)
+  - RULE-SET,hagezi-main,REJECT
+  - RULE-SET,hagezi-tif,REJECT
+
+  # ۴. مسدودسازی درگاه‌های فیشینگ و تبلیغات درون‌برنامه‌ای ایران (با محافظت شاپرک)
+  - RULE-SET,ads-ir,REJECT
+  - RULE-SET,phishing-ir,REJECT
+
+  # ۵. مهار پروتکل UDP/443 (QUIC) جهت جلوگیری از افت سرعت اینترنت و پکت‌لاس
+  - AND,((NETWORK,UDP),(DST-PORT,443)),REJECT
+
+  # ۶. هدایت مسیریاب ویز از تونل پروکسی جهت دور زدن تحریم منطقه‌ای
+  - DOMAIN-SUFFIX,waze.com,PROXY
+  - DOMAIN-KEYWORD,waze,PROXY
+
+  # ۷. بای‌پس مستقیم اپلیکیشن‌های اندروید (Snapp, Tapsi, Mobile Banks)
+  - RULE-SET,apps-ir,DIRECT,no-resolve
+
+  # ۸. ترافیک مستقیم دامنه‌های مهم داخلی خارج از پسوند .ir
+  - DOMAIN-SUFFIX,neshan.org,DIRECT
+  - DOMAIN-SUFFIX,rajman.org,DIRECT
+  - DOMAIN-SUFFIX,cedarmaps.com,DIRECT
+  - DOMAIN-SUFFIX,snapp.cab,DIRECT
+  - DOMAIN-SUFFIX,snapp.tax,DIRECT
+  - DOMAIN-SUFFIX,snappcloud.io,DIRECT
+  - DOMAIN-SUFFIX,snapp.supply,DIRECT
+  - DOMAIN-SUFFIX,tapsi.cab,DIRECT
+  - DOMAIN-SUFFIX,tap33.me,DIRECT
+  - DOMAIN-SUFFIX,taximaxim.com,DIRECT
+  - DOMAIN-SUFFIX,torob.com,DIRECT
+  - DOMAIN-SUFFIX,divarcdn.com,DIRECT
+  - DOMAIN-SUFFIX,digikala.com,DIRECT
+  - DOMAIN-SUFFIX,dl150m.info,DIRECT
+  - DOMAIN-SUFFIX,dl175m.info,DIRECT
+  - DOMAIN-SUFFIX,linkulu.com,DIRECT
+  - DOMAIN-SUFFIX,film2media.cam,DIRECT
+  - DOMAIN-SUFFIX,zarinpal.com,DIRECT
+  - DOMAIN-SUFFIX,zarin.link,DIRECT
+  - DOMAIN-SUFFIX,payping.net,DIRECT
+  - DOMAIN-SUFFIX,ramzinex.com,DIRECT
+  - DOMAIN-SUFFIX,abantether.com,DIRECT
+  - DOMAIN-SUFFIX,nobitex.net,DIRECT
+  - DOMAIN-SUFFIX,exir.io,DIRECT
+  - DOMAIN-SUFFIX,wallex.net,DIRECT
+
+  # ۹. هدایت مستقیم کل زیرساخت ملی ایران (.ir، رنج‌های فشرده RIPE و ASNها)
+  - DOMAIN-SUFFIX,ir,DIRECT
+  - RULE-SET,ir,DIRECT
+  - RULE-SET,ircidr,DIRECT,no-resolve
+  - RULE-SET,irasn,DIRECT,no-resolve
+
+  # ۱۰. قانون نهایی: عبور تمام ترافیک باقی‌مانده از تونل پروکسی
+  - MATCH,PROXY
