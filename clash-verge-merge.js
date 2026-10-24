@@ -23,16 +23,19 @@ const ENABLE_GAMBLING_FILTER = false;
 // 7. Enforce Strict SafeSearch (Google & Bing)
 const ENABLE_SAFE_SEARCH = false;
 
-// 8. Direct Routing for Iranian National Infrastructure (.ir, CIDRs & ASNs)
+// 8. Direct Routing for Iranian Android Native Applications (Snapp, Tapsi, Banks)
+const ENABLE_IRAN_APPS = true;
+
+// 9. Direct Routing for Iranian National Infrastructure (.ir, CIDRs & ASNs)
 const ENABLE_IRAN_ROUTING = true;
 
-// 9. Block Iranian In-App Ads & Trackers (With Shaparak Safety Layer)
+// 10. Block Iranian In-App Ads & Trackers (With Shaparak Safety Layer)
 const ENABLE_IRAN_ADS = true;
 
-// 10. Block Fake Banking Portals, Smishing & Domestic Phishing
+// 11. Block Fake Banking Portals, Smishing & Domestic Phishing
 const ENABLE_IRAN_PHISHING = true;
 
-// 11. Block UDP/443 (QUIC) to Prevent ISP Packet Loss & Speed Throttling
+// 12. Block UDP/443 (QUIC) to Prevent ISP Packet Loss & Speed Throttling
 const ENABLE_QUIC_BLOCK = true;
 
 // Automated Update Intervals (in hours)
@@ -123,7 +126,7 @@ const DOH_ENDPOINTS = Object.freeze([
   "https://9.9.9.9/dns-query"
 ]);
 
-// Precompiled Binary MRS Rule-Providers
+// Precompiled Binary MRS & Classical Rule-Providers
 const PRECOMPILED_PROVIDERS = Object.freeze({
   // Global Protection (HaGeZi Repository)
   "hagezi-main": Object.freeze({
@@ -237,6 +240,16 @@ const PRECOMPILED_PROVIDERS = Object.freeze({
       format: "mrs",
       url: `${IRAN_RULES_URL}nsfw.mrs`,
       path: "./ruleset/nsfw.mrs",
+      interval: STANDARD_UPDATE_INTERVAL
+    })
+  } : {}),
+  ...(ENABLE_IRAN_APPS ? {
+    "apps-ir": Object.freeze({
+      type: "http",
+      behavior: "classical",
+      format: "text",
+      url: `${IRAN_RULES_URL}apps.txt`,
+      path: "./ruleset/apps.txt",
       interval: STANDARD_UPDATE_INTERVAL
     })
   } : {}),
@@ -355,7 +368,10 @@ const STATIC_CORE_RULES = Object.freeze([
   ...(ENABLE_IRAN_ADS ? ["RULE-SET,ads-ir,REJECT"] : []),
   ...(ENABLE_IRAN_PHISHING ? ["RULE-SET,phishing-ir,REJECT"] : []),
 
-  // 6. Direct Domestic Traffic
+  // 6. Direct Android Applications Bypass
+  ...(ENABLE_IRAN_APPS ? ["RULE-SET,apps-ir,DIRECT,no-resolve"] : []),
+
+  // 7. Direct Domestic Traffic
   ...(ENABLE_IRAN_ROUTING ? [
     ...MANUAL_DOMAINS.map(d => `DOMAIN-SUFFIX,${d},DIRECT`),
     "DOMAIN-SUFFIX,ir,DIRECT",
@@ -364,7 +380,7 @@ const STATIC_CORE_RULES = Object.freeze([
     "RULE-SET,irasn,DIRECT,no-resolve"
   ] : []),
 
-  // 7. Block QUIC (UDP/443)
+  // 8. Block QUIC (UDP/443)
   ...(ENABLE_QUIC_BLOCK ? ["AND,((NETWORK,UDP),(DST-PORT,443)),REJECT"] : [])
 ]);
 
