@@ -4,7 +4,6 @@ import sys
 import subprocess
 import ipaddress
 import urllib.request
-import xml.etree.ElementTree as ET
 
 OUTPUT_DIR = "output_text"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -16,7 +15,6 @@ def fetch_data(urls, timeout=60):
     if isinstance(urls, str):
         urls = [urls]
     for url in urls:
-        # روش اول: استفاده از curl برای مدیریت دیتای فشرده و ریدایرکت‌ها
         try:
             cmd = ["curl", "-sSL", "--compressed", "--max-time", str(timeout), "-A", HEADERS['User-Agent'], url]
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -25,7 +23,6 @@ def fetch_data(urls, timeout=60):
         except Exception as e:
             print(f"[!] curl notice for {url}: {e}. Retrying via urllib...")
 
-        # روش دوم: فال‌بک با urllib
         try:
             req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -109,7 +106,6 @@ if ripe_raw:
             elif parts[2] == 'asn':
                 asns.append(f"IP-ASN,{parts[3]}")
 
-# فال‌بک اضطراری با دیتای معتبر
 if not ipv4_nets:
     print("[!] Primary RIR mirrors delayed. Engaging backup mirror...")
     fallback_cidrs = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ircidr.txt", timeout=30)
@@ -258,9 +254,8 @@ with open(f"{OUTPUT_DIR}/nsfw.txt", "w", encoding="utf-8") as f:
 # ==============================================================================
 # 6. IRANIAN APPS (MASSIVE HYBRID DATABASE: ANDROID PACKAGES & WINDOWS PROCESSES)
 # ==============================================================================
-print("[-] Step 6: Compiling massive Iranian Android (PACKAGE-NAME) & Windows (PROCESS-NAME) rules...")
+print("[-] Step 6: Compiling massive Iranian Android & Windows applications database...")
 
-# ۱. هسته تضمین‌شده حیاتی
 ESSENTIAL_SEED = {
     "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
     "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -273,7 +268,6 @@ ESSENTIAL_SEED = {
     "com.farsitel.bazaar", "ir.mservices.myket", "ir.mci.ecareapp", "com.mtnirancell.myirancell", "ir.rightel.myrightel"
 }
 
-# پکیج‌هایی که هرگز نباید دایرکت شوند (برنامه‌های خارجی یا حساس به تحریم)
 GLOBAL_EXCLUDES = {
     "org.telegram.messenger", "com.whatsapp", "com.instagram.android", "com.facebook.katana",
     "com.twitter.android", "com.google.android.youtube", "com.google.android.gms", "com.android.chrome",
@@ -282,11 +276,8 @@ GLOBAL_EXCLUDES = {
 
 compiled_packages = set(ESSENTIAL_SEED)
 
-# ۲. منابع بزرگ اپلیکیشن‌های آماده و پایش‌شده
 APP_UPSTREAM_URLS = [
-    # منبع اصلی سورس خام پکیج‌های چاکلت
     "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/main/apps.txt",
-    # سورس دیتابیس جامعه اندروید ایران
     "https://raw.githubusercontent.com/SamadiPour/iran-android-apps/master/packages.txt"
 ]
 
@@ -299,29 +290,22 @@ for url in APP_UPSTREAM_URLS:
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            # پاکسازی پیشوندهای احتمالی چاکلت یا فرمت‌های مختلف
             pkg = line.replace("PROCESS-NAME,", "").replace("PACKAGE-NAME,", "").strip()
-            # اعتبارسنجی ساختار پکیج اندروید و عدم حضور در لیست سیاه دامنه‌های خارجی
             if pkg not in GLOBAL_EXCLUDES and PKG_REGEX.match(pkg) and len(pkg) < 85:
                 compiled_packages.add(pkg)
 
-# ۳. پروسس‌های بومی برنامه‌های دسکتاپ ویندوز
 WINDOWS_PROCESSES = [
     "Bale.exe", "Eitaa.exe", "EitaaDesktop.exe", "Rubika.exe",
     "Soroush.exe", "Gap.exe", "IDMan.exe", "Digikala.exe", "Aparat.exe"
 ]
 
-# ۴. ذخیره‌سازی باینری و استاندارد (همزمان PACKAGE-NAME برای اندروید و PROCESS-NAME برای چاکلت و ویندوز)
 with open(f"{OUTPUT_DIR}/apps.txt", "w", encoding="utf-8") as f:
-    # الف: فرمت استاندارد برای اندروید (Clash for Android / FlClash)
     for pkg in sorted(compiled_packages):
         f.write(f"PACKAGE-NAME,{pkg}\n")
-    # ب: سازگاری معکوس با چاکلت (برای کلاینت‌هایی که با PROCESS-NAME ست شده‌اند)
     for pkg in sorted(compiled_packages):
         f.write(f"PROCESS-NAME,{pkg}\n")
-    # ج: پروسس‌های اگزه ویندوز
     for proc in sorted(WINDOWS_PROCESSES):
         f.write(f"PROCESS-NAME,{proc}\n")
 
 total_rules = (len(compiled_packages) * 2) + len(WINDOWS_PROCESSES)
-print(f"[+] Total Application Rules compiled: {total_rules} ({len(compiled_packages)} unique Apps covered for Android & Windows!)")
+print(f"[+] Total Application Rules compiled: {total_rules} ({len(compiled_packages)} unique domestic apps covered!)")
