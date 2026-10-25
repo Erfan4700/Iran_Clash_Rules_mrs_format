@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-Universal Multi-Platform & Modular Rule-Set Suite
+Universal Multi-Platform & Disjoint Modular Rule-Set Engine
 Repository: Erfan4700/iran-routing-rules
-Includes: Master Lists + Granular Modules (Media, Banking, Gov, Gaming, Download)
+Platforms: Mihomo (.mrs) | Sing-box (.srs / .json) | V2Ray (.dat) | Surge (.list)
 ================================================================================
 """
 
@@ -277,7 +277,7 @@ def compile_to_srs(singbox_bin: Optional[str], json_file: Path, srs_file: Path) 
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 IRAN ROUTING RULES: ENTERPRISE MODULAR & UNIVERSAL PIPELINE")
+    print("🚀 IRAN ROUTING RULES: ENTERPRISE MODULAR & DISJOINT PIPELINE")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
@@ -433,8 +433,6 @@ def main():
 
     write_v2ray_domain_tag(pruned_iran_domains, "iran-domains")
     write_v2ray_domain_tag(pruned_iran_domains, "ir")
-    non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
-    write_v2ray_domain_tag(non_ir, "other")
 
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
@@ -452,9 +450,9 @@ def main():
     print(f"[✓] Master Database: {len(pruned_iran_domains)} root domains preserved without loss.")
 
     # --------------------------------------------------------------------------
-    # 4. GRANULAR MODULES (MEDIA, BANKING, GOV, GAMING, DOWNLOAD)
+    # 4. GRANULAR MODULES & DISJOINT REMAINDER (iran-other)
     # --------------------------------------------------------------------------
-    print("\n[+] 4/8: Extracting High-Demand Granular Sub-Modules (>100 Rules Each)...")
+    print("\n[+] 4/8: Extracting High-Demand Granular Sub-Modules & Remainder...")
 
     MEDIA_PATTERNS = re.compile(r"(?:aparat|filimo|namava|filmnet|telewebion|gapfilm|cinematicket|tiwall|tamasha|namasha|antenn|lenz|mayaa|irib|seevid|ammarfilm|radio|video|music|tv|vod|stream)")
     BANKING_PATTERNS = re.compile(r"(?:bank|shaparak|sadad|mellat|melli|tejarat|saderat|pasargad|sb24|blubank|sepah|refah|keshavarzi|maskan|postbank|zarinpal|payping|idpay|jibit|nextpay|vandar|zibal|nobitex|wallex|bitpin|ramzinex|abantether|exir|bourse|seham|tsetmc|codal|emofid|agah|fipiran)")
@@ -480,7 +478,7 @@ def main():
         if DOWNLOAD_PATTERNS.search(d):
             download_domains.add(d)
 
-    def export_sub_module(domains: Set[str], mod_name: str, min_thresh: int = 100):
+    def export_sub_module(domains: Set[str], mod_name: str, min_thresh: int = 100) -> Set[str]:
         pruned_sub = prune_subdomains(domains)
         if len(pruned_sub) >= min_thresh:
             with open(TEXT_DIR / f"{mod_name}.txt", "w", encoding="utf-8") as f:
@@ -490,14 +488,21 @@ def main():
             save_singbox_domain_json(pruned_sub, TEXT_DIR / f"{mod_name}.json")
             write_v2ray_domain_tag(pruned_sub, mod_name)
             print(f"  [✓] Module '{mod_name}': {len(pruned_sub)} unique domains.")
-            return True
-        return False
+            return pruned_sub
+        return set()
 
-    export_sub_module(media_domains, "iran-media", min_thresh=100)
-    export_sub_module(banking_domains, "iran-banking", min_thresh=100)
-    export_sub_module(gov_domains, "iran-gov", min_thresh=100)
-    export_sub_module(gaming_domains, "iran-gaming", min_thresh=80)
-    export_sub_module(download_domains, "iran-download", min_thresh=100)
+    p_media = export_sub_module(media_domains, "iran-media", min_thresh=100)
+    p_banking = export_sub_module(banking_domains, "iran-banking", min_thresh=100)
+    p_gov = export_sub_module(gov_domains, "iran-gov", min_thresh=100)
+    p_gaming = export_sub_module(gaming_domains, "iran-gaming", min_thresh=80)
+    p_download = export_sub_module(download_domains, "iran-download", min_thresh=100)
+
+    categorized_union = p_media | p_banking | p_gov | p_gaming | p_download
+    other_domains = pruned_iran_domains - categorized_union
+
+    export_sub_module(other_domains, "iran-other", min_thresh=100)
+    write_v2ray_domain_tag(other_domains, "other")
+    print(f"  [✓] Disjoint Remainder 'iran-other': {len(other_domains)} domains (Zero Overlap with sub-modules).")
 
     # --------------------------------------------------------------------------
     # 5. PERSIAN ADS & TRACKERS
@@ -670,6 +675,7 @@ def main():
 
     # Unified Classical
     classical_rules = ["GEOIP,ir", "DOMAIN-SUFFIX,ir"]
+    non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
     for d in sorted(non_ir):
         classical_rules.append(f"DOMAIN-SUFFIX,{d}")
     for n in collapsed_v4:
@@ -703,7 +709,7 @@ def main():
     # 9. DUAL COMPILATION (MIHOMO .MRS & SING-BOX .SRS)
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
-    print("⚙️ COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
+    print("⚙️ DUAL COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
     print("=" * 78)
 
     for f in TEXT_DIR.glob("*.*"):
@@ -715,7 +721,7 @@ def main():
         print(f"[+] Mihomo Core Active: {mihomo_bin}")
         domain_targets = [
             "iran-domains", "iran-domains-lite", "iran-ads", "iran-security", "iran-gambling",
-            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download"
+            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download", "iran-other"
         ]
         for target in domain_targets:
             in_txt = TEXT_DIR / f"{target}.txt"
@@ -738,7 +744,7 @@ def main():
         srs_targets = [
             "iran-domains", "iran-domains-lite", "iran-ip", "iran-cloud",
             "iran-ads", "iran-security", "iran-security-ip", "iran-gambling", "iran-apps",
-            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download"
+            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download", "iran-other"
         ]
         for target in srs_targets:
             in_json = TEXT_DIR / f"{target}.json"
