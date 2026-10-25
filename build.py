@@ -3,7 +3,7 @@
 """
 ================================================================================
 Enterprise Rule-Set Engine for Mihomo / Clash Meta
-Pure Modern Architecture (No Legacy Aliases)
+Powered by Mozilla Public Suffix List (tldextract) & Clean Process Taxonomy
 ================================================================================
 """
 
@@ -19,6 +19,20 @@ import ipaddress
 import urllib.request
 from typing import Set, List, Tuple, Optional
 from pathlib import Path
+
+# --- BOOTSTRAP TLDEXTRACT FOR BULLETPROOF DOMAIN PARSING ---
+try:
+    import tldextract
+except ImportError:
+    print("[*] Installing official 'tldextract' library for Mozilla PSL parsing...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "tldextract", "--quiet"])
+        import tldextract
+    except Exception as e:
+        print(f"[!] Warning: Could not auto-install tldextract ({e}). Falling back to standard parser.")
+        tldextract = None
+
+EXTRACTOR = tldextract.TLDExtract(cache_dir=str(Path(__file__).resolve().parent / ".tld_cache")) if tldextract else None
 
 # --- DIRECTORY CONFIGURATION ---
 BASE_DIR = Path(__file__).resolve().parent
@@ -56,12 +70,6 @@ UNBREAK_WHITELIST = {
     "soroushplus.ir", "cafebazaar.ir", "farsitel.com", "myket.ir",
     "neshan.org", "neshanmaps.ir", "balad.ir", "aparat.com", "telewebion.com",
     "mci.ir", "mtnirancell.ir", "rightel.ir", "tamin.ir"
-}
-
-PUBLIC_SUFFIX_SET = {
-    "ir", "co.ir", "gov.ir", "ac.ir", "org.ir", "net.ir", "sch.ir", "id.ir",
-    "com", "net", "org", "gov", "edu", "info", "biz", "io", "me", "co",
-    "online", "site", "xyz", "co.uk", "org.uk", "com.tr", "edu.tr", "com.au", "net.au"
 }
 
 def is_whitelisted(domain: str) -> bool:
@@ -109,7 +117,7 @@ def save_baseline(name: str, items: Set[str]) -> None:
             f.write(f"{item}\n")
 
 # ==============================================================================
-# DOMAIN PURIFICATION & SUBDOMAIN PRUNING
+# BULLETPROOF DOMAIN PURIFICATION & PSL SUBDOMAIN PRUNING
 # ==============================================================================
 DOMAIN_REGEX = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 
@@ -130,30 +138,51 @@ def clean_domain(line: str) -> Optional[str]:
     target = re.sub(r"^\+\.?", "", target)
     target = target.strip(".")
 
-    if target in PUBLIC_SUFFIX_SET:
+    if not DOMAIN_REGEX.match(target) or ".." in target:
         return None
 
-    if DOMAIN_REGEX.match(target) and ".." not in target:
-        return target
-    return None
+    if EXTRACTOR:
+        ext = EXTRACTOR(target)
+        if not ext.domain or not ext.suffix:
+            return None
+    else:
+        if target in {"ir", "co.ir", "gov.ir", "ac.ir", "org.ir", "com", "net", "org"}:
+            return None
+
+    return target
 
 def prune_subdomains(domains: Set[str]) -> Set[str]:
     sorted_domains = sorted(domains, key=lambda d: (len(d.split(".")), len(d), d))
     retained_roots = set()
 
     for domain in sorted_domains:
-        parts = domain.split(".")
-        is_redundant = False
-        for i in range(1, len(parts)):
-            parent = ".".join(parts[i:])
-            if parent in PUBLIC_SUFFIX_SET:
-                continue
-            if parent in retained_roots:
-                is_redundant = True
-                break
+        if EXTRACTOR:
+            ext = EXTRACTOR(domain)
+            registered_root = ext.registered_domain
 
-        if not is_redundant:
-            retained_roots.add(domain)
+            if registered_root and registered_root != domain and registered_root in retained_roots:
+                continue
+
+            parts = ext.subdomain.split(".") if ext.subdomain else []
+            is_redundant = False
+            for i in range(len(parts)):
+                parent = ".".join(parts[i:] + [ext.domain, ext.suffix])
+                if parent in retained_roots:
+                    is_redundant = True
+                    break
+
+            if not is_redundant:
+                retained_roots.add(domain)
+        else:
+            parts = domain.split(".")
+            is_redundant = False
+            for i in range(1, len(parts)):
+                parent = ".".join(parts[i:])
+                if parent in retained_roots:
+                    is_redundant = True
+                    break
+            if not is_redundant:
+                retained_roots.add(domain)
 
     return retained_roots
 
@@ -258,7 +287,7 @@ def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mr
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 PURE MODERN PIPELINE: IRAN RULESET SUITE (CLEAN & EXCLUSIVE)")
+    print("🚀 MODERN PIPELINE: IRAN RULESET SUITE (PSL & CLEAN LOGS EDITION)")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
@@ -357,9 +386,9 @@ def main():
     print(f"[✓] iran-cloud: {len(cloud_v4 + cloud_v6)} cloud CIDRs")
 
     # --------------------------------------------------------------------------
-    # 3. IRANIAN DOMAINS
+    # 3. IRANIAN DOMAINS WITH PSL PRUNING
     # --------------------------------------------------------------------------
-    print("\n[+] 3/7: Processing Iranian Domains with Subdomain Pruning...")
+    print("\n[+] 3/7: Processing Iranian Domains with Mozilla PSL Pruning...")
     raw_iran_domains = {
         "digikala.com", "torob.com", "divar.ir", "snapp.ir", "snapp.cab", "tapsi.cab",
         "neshan.org", "balad.ir", "bale.ai", "eitaa.com", "rubika.ir", "shaparak.ir",
@@ -500,9 +529,9 @@ def main():
     print(f"[✓] iran-gambling: {len(pruned_gambling)} domains")
 
     # --------------------------------------------------------------------------
-    # 7. DOMESTIC APPS & UNIFIED CLASSICAL
+    # 7. DOMESTIC APPS: STRICT SEPARATION (NO OVERLAPPING LOGS)
     # --------------------------------------------------------------------------
-    print("\n[+] 7/7: Compiling Applications & Unified Classical...")
+    print("\n[+] 7/7: Compiling Applications with Strict Environment Separation...")
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -547,8 +576,6 @@ def main():
     with open(TEXT_DIR / "iran-apps.txt", "w", encoding="utf-8") as f:
         for pkg in sorted(compiled_packages):
             f.write(f"PACKAGE-NAME,{pkg}\n")
-        for pkg in sorted(compiled_packages):
-            f.write(f"PROCESS-NAME,{pkg}\n")
         for proc in sorted(WINDOWS_PROCESSES):
             f.write(f"PROCESS-NAME,{proc}\n")
 
@@ -556,8 +583,6 @@ def main():
         f.write("payload:\n")
         for pkg in sorted(compiled_packages):
             f.write(f"  - 'PACKAGE-NAME,{pkg}'\n")
-        for pkg in sorted(compiled_packages):
-            f.write(f"  - 'PROCESS-NAME,{pkg}'\n")
         for proc in sorted(WINDOWS_PROCESSES):
             f.write(f"  - 'PROCESS-NAME,{proc}'\n")
 
@@ -580,10 +605,10 @@ def main():
         for r in classical_rules:
             f.write(f"  - '{r}'\n")
 
-    print(f"[✓] iran-apps: {len(compiled_packages)} apps | iran-unified: {len(classical_rules)} rules")
+    print(f"[✓] iran-apps: {len(compiled_packages)} android packages & {len(WINDOWS_PROCESSES)} desktop processes")
 
     # --------------------------------------------------------------------------
-    # 8. SYNCHRONIZE & COMPILE MRS (NO LEGACY COPIES)
+    # 8. SYNCHRONIZE & COMPILE MRS
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
     print("⚙️ COMPILATION OF PURE MODERN ARTIFACTS")
