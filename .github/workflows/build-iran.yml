@@ -47,7 +47,26 @@ jobs:
           sudo mv mihomo /usr/local/bin/
           mihomo -v
 
-      - name: Run Pure Rule-Set Engine
+      - name: Install & Setup Sing-box Core
+        run: |
+          echo "Fetching latest official Sing-box release binary..."
+          SINGBOX_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/SagerNet/sing-box/releases/latest | \
+            jq -r '.assets[] | select(.name | test("sing-box-.*-linux-amd64\\.tar\\.gz$")) | .browser_download_url' | head -n 1)
+
+          if [ -z "$SINGBOX_URL" ] || [ "$SINGBOX_URL" = "null" ]; then
+            echo "[X] FATAL ERROR: Unable to locate Sing-box release URL."
+            exit 1
+          fi
+
+          curl -sSL "$SINGBOX_URL" -o sing-box.tar.gz
+          tar -xzf sing-box.tar.gz
+          mv sing-box-*/sing-box ./sing-box
+          chmod +x sing-box
+          sudo mv sing-box /usr/local/bin/
+          sing-box version
+
+      - name: Run Universal Multi-Platform Engine
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -68,7 +87,7 @@ jobs:
 
       - name: Verify Generated Artifacts
         run: |
-          echo "=== Exactly 20 Pure Modern Rule-Set Artifacts ==="
+          echo "=== Universal Suite Artifacts (MRS, SRS, JSON, LIST, TXT) ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -87,8 +106,8 @@ jobs:
         run: |
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
-          RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
-          RELEASE_NOTES="Automated binary MRS build featuring 20 Pure Modern RuleSets: Mozilla PSL Pruning, Separated Desktop/Android Taxonomy, Unified Security, Aggregated Cloud CIDRs, and RIPE Collapsing. Last synced: $NOW"
+          RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
+          RELEASE_NOTES="Automated build featuring Universal Multi-Platform RuleSets: Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Classical Text/YAML. Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
@@ -107,23 +126,20 @@ jobs:
             --notes "$RELEASE_NOTES" \
             --latest
 
-      - name: Purge jsDelivr CDN Cache (Modern Suite Only)
+      - name: Purge jsDelivr CDN Cache
         run: |
           echo "Waiting 20 seconds for GitHub RAW storage propagation..."
           sleep 20
 
           TARGET_FILES=(
-            "iran-domains.mrs" "iran-domains.txt"
-            "iran-domains-lite.mrs" "iran-domains-lite.txt"
-            "iran-ip.mrs" "iran-ip.txt"
-            "iran-cloud.mrs" "iran-cloud.txt"
-            "iran-ads.mrs" "iran-ads.txt"
-            "iran-security.mrs" "iran-security.txt"
-            "iran-security-ip.mrs" "iran-security-ip.txt"
-            "iran-gambling.mrs" "iran-gambling.txt"
-            "iran-apps.txt" "iran-apps.yaml"
-            "iran-asn.txt" "iran-asn.yaml"
-            "iran-unified.txt" "iran-unified.yaml"
+            "iran-domains.mrs" "iran-domains.srs" "iran-domains.txt" "iran-domains.json" "iran-domains.list"
+            "iran-ip.mrs" "iran-ip.srs" "iran-ip.txt" "iran-ip.json" "iran-ip.list"
+            "iran-ads.mrs" "iran-ads.srs" "iran-ads.txt" "iran-ads.json" "iran-ads.list"
+            "iran-security.mrs" "iran-security.srs" "iran-security.txt" "iran-security.json" "iran-security.list"
+            "iran-gambling.mrs" "iran-gambling.srs" "iran-gambling.txt" "iran-gambling.json" "iran-gambling.list"
+            "iran-cloud.mrs" "iran-cloud.srs" "iran-cloud.txt" "iran-cloud.json" "iran-cloud.list"
+            "iran-apps.srs" "iran-apps.txt" "iran-apps.yaml" "iran-apps.json"
+            "iran-unified.txt" "iran-unified.yaml" "iran-unified.list"
           )
 
           for FILE in "${TARGET_FILES[@]}"; do
