@@ -3,7 +3,7 @@
 """
 ================================================================================
 Enterprise Rule-Set Engine for Mihomo / Clash Meta
-Modern Semantic Architecture & Threat-Intel Aggregator
+Pure Modern Architecture (No Legacy Aliases)
 ================================================================================
 """
 
@@ -258,13 +258,13 @@ def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mr
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 MODERN PIPELINE: IRAN RULESET SUITE (ENTERPRISE EDITION)")
+    print("🚀 PURE MODERN PIPELINE: IRAN RULESET SUITE (CLEAN & EXCLUSIVE)")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
-    # 1. IRAN IP & ASN (iran-ip.txt & iran-asn.txt)
+    # 1. IRAN IP & ASN
     # --------------------------------------------------------------------------
-    print("\n[+] 1/7: Processing Iranian IP-CIDRs & ASNs (RIPE NCC Authoritative)...")
+    print("\n[+] 1/7: Processing Iranian IP-CIDRs & ASNs...")
     ripe_raw = fetch_data([
         "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
         "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest"
@@ -338,10 +338,10 @@ def main():
         for asn in sorted(asns):
             f.write(f"  - '{asn}'\n")
 
-    print(f"[✓] iran-ip: {len(all_cidrs)} collapsed CIDRs | iran-asn: {len(asns)} ASNs")
+    print(f"[✓] iran-ip: {len(all_cidrs)} CIDRs | iran-asn: {len(asns)} ASNs")
 
     # --------------------------------------------------------------------------
-    # 2. DOMESTIC CLOUD & DATACENTERS MERGED (iran-cloud.txt)
+    # 2. DOMESTIC CLOUDS MERGED
     # --------------------------------------------------------------------------
     print("\n[+] 2/7: Aggregating Domestic Clouds (Arvan, Derak, ParsPack, IranServer)...")
     cloud_sources = ["arvancloud", "derakcloud", "iranserver", "parspack"]
@@ -354,10 +354,10 @@ def main():
     with open(TEXT_DIR / "iran-cloud.txt", "w", encoding="utf-8") as f:
         for net in (cloud_v4 + cloud_v6):
             f.write(f"{net}\n")
-    print(f"[✓] iran-cloud: {len(cloud_v4 + cloud_v6)} collapsed cloud infrastructure CIDRs")
+    print(f"[✓] iran-cloud: {len(cloud_v4 + cloud_v6)} cloud CIDRs")
 
     # --------------------------------------------------------------------------
-    # 3. IRANIAN DOMAINS (iran-domains.txt & iran-domains-lite.txt)
+    # 3. IRANIAN DOMAINS
     # --------------------------------------------------------------------------
     print("\n[+] 3/7: Processing Iranian Domains with Subdomain Pruning...")
     raw_iran_domains = {
@@ -405,12 +405,12 @@ def main():
     with open(TEXT_DIR / "iran-domains-lite.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_lite):
             f.write(f"{d}\n")
-    print(f"[✓] iran-domains: {len(pruned_iran_domains)} root entities | lite: {len(pruned_lite)}")
+    print(f"[✓] iran-domains: {len(pruned_iran_domains)} roots | lite: {len(pruned_lite)}")
 
     # --------------------------------------------------------------------------
-    # 4. PERSIAN ADS & TRACKERS (iran-ads.txt)
+    # 4. PERSIAN ADS & TRACKERS
     # --------------------------------------------------------------------------
-    print("\n[+] 4/7: Compiling Persian Ads & Trackers (Zero-Trust Protected)...")
+    print("\n[+] 4/7: Compiling Persian Ads (Zero-Trust Protected)...")
     ads_sources = [
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt",
@@ -429,13 +429,12 @@ def main():
     with open(TEXT_DIR / "iran-ads.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_ads):
             f.write(f"{d}\n")
-    print(f"[✓] iran-ads: {len(pruned_ads)} verified ad/telemetry domains")
+    print(f"[✓] iran-ads: {len(pruned_ads)} domains")
 
     # --------------------------------------------------------------------------
-    # 5. UNIFIED SECURITY: PHISHING + MALWARE (iran-security.txt & .ip)
+    # 5. UNIFIED SECURITY (PHISHING + MALWARE)
     # --------------------------------------------------------------------------
-    print("\n[+] 5/7: Compiling Unified Security (Phishing + Malware + Threat IPs)...")
-    # ریجکس هوشمند با حذف خطای شناسایی واژه‌های تصادفی فرانسوی یا لاتین
+    print("\n[+] 5/7: Compiling Unified Security (Targeted Threat-Intel)...")
     DOMESTIC_THREAT_REGEX = re.compile(
         r"(?:^|[.-])(?:shaparak|sana[-_.]?gov|adliran|divar|sadad|"
         r"mellat|melli|tejarat|saderat|pasargad|blubank|keshavarzi|refah|maskan|"
@@ -455,7 +454,6 @@ def main():
         for line in content.splitlines():
             d = clean_domain(line)
             if d and not is_whitelisted(d):
-                # اگر مربوط به فیشینگ بانکی است یا در لیست معتبر بدافزار چاکلت وجود دارد
                 if DOMESTIC_THREAT_REGEX.search(d) or "malware" in url:
                     raw_threat_domains.add(d)
 
@@ -480,7 +478,7 @@ def main():
     print(f"[✓] iran-security: {len(pruned_threats)} domains | iran-security-ip: {len(t_v4 + t_v6)} CIDRs")
 
     # --------------------------------------------------------------------------
-    # 6. DOMESTIC GAMBLING & CASINOS (iran-gambling.txt)
+    # 6. DOMESTIC GAMBLING & CASINOS
     # --------------------------------------------------------------------------
     print("\n[+] 6/7: Compiling Domestic Gambling & Betting...")
     gambling_sources = [
@@ -499,12 +497,12 @@ def main():
     with open(TEXT_DIR / "iran-gambling.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_gambling):
             f.write(f"{d}\n")
-    print(f"[✓] iran-gambling: {len(pruned_gambling)} targeted betting/gambling domains")
+    print(f"[✓] iran-gambling: {len(pruned_gambling)} domains")
 
     # --------------------------------------------------------------------------
     # 7. DOMESTIC APPS & UNIFIED CLASSICAL
     # --------------------------------------------------------------------------
-    print("\n[+] 7/7: Compiling Applications & Unified Classical Matrix...")
+    print("\n[+] 7/7: Compiling Applications & Unified Classical...")
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -585,17 +583,15 @@ def main():
     print(f"[✓] iran-apps: {len(compiled_packages)} apps | iran-unified: {len(classical_rules)} rules")
 
     # --------------------------------------------------------------------------
-    # 8. SYNCHRONIZE, COMPILE MRS & GENERATE BACKWARD COMPATIBLE ALIASES
+    # 8. SYNCHRONIZE & COMPILE MRS (NO LEGACY COPIES)
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
-    print("⚙️ COMPILATION & BACKWARD COMPATIBILITY SYNC")
+    print("⚙️ COMPILATION OF PURE MODERN ARTIFACTS")
     print("=" * 78)
 
-    # گام اول: کپی تمام فایل‌های متنی و یمل مدرن به پوشه نهایی
     for f in TEXT_DIR.glob("*.*"):
         shutil.copy(f, MRS_DIR / f.name)
 
-    # گام دوم: کامپایل باینری به فرمت MRS
     mihomo_bin = find_or_download_mihomo()
     if mihomo_bin:
         print(f"[+] Compiler active: {mihomo_bin}")
@@ -615,37 +611,8 @@ def main():
                 success = compile_to_mrs(mihomo_bin, "ipcidr", in_txt, out_mrs)
                 print(f"  [{'✓' if success else '✗'}] {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
 
-    # گام سوم: ساخت فایل‌های سازگاری به عقب (Legacy Aliases) جهت حفظ کانفیگ‌های قدیمی
-    legacy_map = {
-        "iran-domains.txt": "ir.txt",
-        "iran-domains.mrs": "ir.mrs",
-        "iran-domains-lite.txt": "ir-lite.txt",
-        "iran-domains-lite.mrs": "ir-lite.mrs",
-        "iran-ip.txt": "ircidr.txt",
-        "iran-ip.mrs": "ircidr.mrs",
-        "iran-ads.txt": "ads.txt",
-        "iran-ads.mrs": "ads.mrs",
-        "iran-gambling.txt": "nsfw.txt",
-        "iran-gambling.mrs": "nsfw.mrs",
-        "iran-security.txt": "phishing.txt",
-        "iran-security.mrs": "phishing.mrs",
-        "iran-security-ip.txt": "phishing-ip.txt",
-        "iran-security-ip.mrs": "phishing-ip.mrs",
-        "iran-apps.txt": "apps.txt",
-        "iran-apps.yaml": "apps.yaml",
-        "iran-asn.txt": "irasn.txt",
-        "iran-asn.yaml": "irasn.yaml",
-        "iran-unified.txt": "rules.txt",
-        "iran-unified.yaml": "rules.yaml"
-    }
-
-    for modern, legacy in legacy_map.items():
-        src = MRS_DIR / modern
-        if src.exists():
-            shutil.copy(src, MRS_DIR / legacy)
-
     print("\n" + "=" * 78)
-    print(f"🏁 COMPLETED: {len(list(MRS_DIR.iterdir()))} total artifacts in ./output_mrs/")
+    print(f"🏁 COMPLETED: Exactly {len(list(MRS_DIR.iterdir()))} pure modern artifacts in ./output_mrs/")
     print("=" * 78)
 
 if __name__ == "__main__":
