@@ -5,10 +5,10 @@
 // --- [A] Global Filtering (HaGeZi Global Adblock & Threat Defense) ---
 const HAGEZI_TIER = "proplus"; // Options: "light" | "normal" | "pro" | "proplus" | "ultimate"
 const ENABLE_HAGEZI_TIF = true; // Global block for malware, ransomware, and phishing (Threat Intelligence Feeds)
-const ENABLE_NATIVE_TRACKERS = false; // Block native OS telemetry (Windows, Apple, Xiaomi, Android/Samsung)
-const ENABLE_DYNDNS_BLOCK = false; // Block Dynamic DNS domains (DuckDNS, No-IP, C2 Trojans)
-const ENABLE_PORN_FILTER = false; // Block adult and explicit content
-const ENABLE_GAMBLING_FILTER = false; // Block global gambling and casino portals
+const ENABLE_NATIVE_TRACKERS = true; // Block native OS telemetry (Windows, Apple, Xiaomi, Android/Samsung)
+const ENABLE_DYNDNS_BLOCK = true; // Block Dynamic DNS domains (DuckDNS, No-IP, C2 Trojans)
+const ENABLE_PORN_FILTER = true; // Block adult and explicit content
+const ENABLE_GAMBLING_FILTER = true; // Block global gambling and casino portals
 
 // --- [B] Domestic Security & Threat Defense (Iran) ---
 const ENABLE_IRAN_ADS = true; // Block domestic trackers and Persian ad networks (Yektanet, SabaVision, etc.)
