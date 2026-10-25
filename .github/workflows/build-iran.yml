@@ -31,18 +31,11 @@ jobs:
             jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
 
           if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
-            echo "[!] Fallback: Retrying without version constraint..."
             MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
               jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
           fi
 
-          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
-            echo "[X] FATAL ERROR: Unable to locate Mihomo binary release URL."
-            exit 1
-          fi
-
-          echo "Downloading from: $MIHOMO_URL"
           curl -sSL "$MIHOMO_URL" -o mihomo.gz
           gzip -d -f mihomo.gz
           chmod +x mihomo
@@ -70,9 +63,7 @@ jobs:
 
       - name: Verify Generated Artifacts
         run: |
-          echo "=== 1. Clean Text Lists (output_text) ==="
-          ls -lh output_text/
-          echo "=== 2. Compiled MRS & Synced Lists (output_mrs) ==="
+          echo "=== Modern Enterprise & Legacy Artifacts ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -85,17 +76,16 @@ jobs:
           keep_files: false
           force_orphan: true
 
-      - name: Update Official Rolling Release
+      - name: Update Official Rolling Release (Clean Re-tagging)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
-          RELEASE_NOTES="Automated binary MRS & Clean Text build featuring RIPE CIDR aggregation, Subdomain Pruning, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and domestic apps. Last synced: $NOW"
+          RELEASE_NOTES="Automated binary MRS build featuring Modern Semantic Naming, Unified Security (Phishing + Malware), Aggregated Cloud CIDRs, RIPE Collapsing, and Android/Windows App Crawlers. Last synced: $NOW"
 
-          echo "[*] Ensuring rolling release freshness for tag: $RELEASE_TAG"
-
+          # ری‌ست کامل ریلیز و تگ جهت تضمین شکستن کش CDN
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
             gh release delete "$RELEASE_TAG" --yes --cleanup-tag
@@ -119,16 +109,15 @@ jobs:
           sleep 20
 
           TARGET_FILES=(
-            "ir.mrs" "ir.txt"
-            "ir-lite.mrs" "ir-lite.txt"
-            "ads.mrs" "ads.txt"
-            "phishing.mrs" "phishing.txt"
-            "nsfw.mrs" "nsfw.txt"
-            "malware.mrs" "malware.txt"
-            "ircidr.mrs" "ircidr.txt"
-            "irasn.txt" "irasn.yaml"
-            "apps.txt" "apps.yaml"
-            "rules.txt" "rules.yaml"
+            "iran-domains.mrs" "iran-domains.txt"
+            "iran-ip.mrs" "iran-ip.txt"
+            "iran-ads.mrs" "iran-ads.txt"
+            "iran-security.mrs" "iran-security.txt"
+            "iran-gambling.mrs" "iran-gambling.txt"
+            "iran-cloud.mrs" "iran-cloud.txt"
+            "iran-apps.txt" "iran-apps.yaml"
+            "iran-unified.yaml"
+            "ir.mrs" "ir.txt" "ircidr.mrs" "ircidr.txt"
           )
 
           for FILE in "${TARGET_FILES[@]}"; do
