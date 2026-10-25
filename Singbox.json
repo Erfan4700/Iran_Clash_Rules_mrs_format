@@ -1,0 +1,30 @@
+{
+  "route": {
+    "rule_set": [
+      {
+        "tag": "iran-domains",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-domains.srs",
+        "download_detour": "direct"
+      },
+      {
+        "tag": "iran-ip",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-ip.srs",
+        "download_detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "rule_set": "iran-domains",
+        "outbound": "direct"
+      },
+      {
+        "rule_set": "iran-ip",
+        "outbound": "direct"
+      }
+    ]
+  }
+}
