@@ -8,10 +8,10 @@ const ENABLE_QUIC_BLOCK = true;
 // --- [A] New HaGeZi Settings (Erfan4700 HaGeZi MRS) ---
 const HAGEZI_TIER = "proplus"; // "light" | "normal" | "pro" | "proplus" | "ultimate"
 const ENABLE_HAGEZI_TIF = true; // Real-time threat intelligence feeds against global ransomware and phishing
-const ENABLE_DYNDNS_BLOCK = false; // Block Dynamic DNS domains
-const ENABLE_NATIVE_TRACKERS = false; // Block native system trackers (Windows, Apple, Xiaomi, Samsung)
-const ENABLE_PORN_FILTER = false; // Adult / NSFW content filtering
-const ENABLE_GAMBLING_FILTER = false; // Block gambling and betting sites
+const ENABLE_DYNDNS_BLOCK = true; // Block Dynamic DNS domains
+const ENABLE_NATIVE_TRACKERS = true; // Block native system trackers (Windows, Apple, Xiaomi, Samsung)
+const ENABLE_PORN_FILTER = true; // Adult / NSFW content filtering
+const ENABLE_GAMBLING_FILTER = true; // Block gambling and betting sites
 
 // --- [B] Iran Security & Ad-blocking Modules ---
 const ENABLE_IRAN_ADS = true; // Persian ads (Yektanet, Sabavision, etc.)
