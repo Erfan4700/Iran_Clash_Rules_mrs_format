@@ -13,21 +13,22 @@ import re
 import sys
 import json
 import shutil
-import tarfile
 import zipfile
 import platform
 import subprocess
 import ipaddress
 import urllib.request
-from typing import Set, List, Tuple, Optional, Dict
+from typing import Set, List, Tuple, Optional
 from pathlib import Path
 
 # --- DIRECTORY CONFIGURATION ---
 BASE_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = BASE_DIR / "release"
+TEXT_DIR = BASE_DIR / "output_text"
+MRS_DIR = BASE_DIR / "output_mrs"
 BASELINE_DIR = BASE_DIR / "data" / "baseline"
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+TEXT_DIR.mkdir(parents=True, exist_ok=True)
+MRS_DIR.mkdir(parents=True, exist_ok=True)
 BASELINE_DIR.mkdir(parents=True, exist_ok=True)
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
@@ -36,7 +37,6 @@ HEADERS = {"User-Agent": USER_AGENT}
 # ==============================================================================
 # 0. ZERO-TRUST CRITICAL INFRASTRUCTURE WHITELIST
 # ==============================================================================
-# این دامنه‌ها هرگز نباید در مسدودکننده‌های تبلیغاتی، فیشینگ یا قمار قرار گیرند.
 UNBREAK_WHITELIST = {
     # PSPs & Payment Infrastructure
     "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
@@ -59,11 +59,10 @@ UNBREAK_WHITELIST = {
     "mci.ir", "mtnirancell.ir", "rightel.ir", "tamin.ir"
 }
 
-# پسوندهای عمومی دامنه (برای جلوگیری از هرس اشتباه مانند co.ir)
 PUBLIC_SUFFIX_SET = {
     "ir", "co.ir", "gov.ir", "ac.ir", "org.ir", "net.ir", "sch.ir", "id.ir",
     "com", "net", "org", "gov", "edu", "info", "biz", "io", "me", "co",
-    "co.uk", "org.uk", "com.tr", "edu.tr", "com.au", "net.au"
+    "online", "site", "xyz", "co.uk", "org.uk", "com.tr", "edu.tr", "com.au", "net.au"
 }
 
 def is_whitelisted(domain: str) -> bool:
@@ -110,7 +109,7 @@ def load_baseline(name: str) -> Set[str]:
     return set()
 
 def save_baseline(name: str, items: Set[str]) -> None:
-    """به‌روزرسانی لایه دوم: ذخیره نسخه طلایی جدید"""
+    """به‌روزرسانی لایه دوم: ذخیره اسنپ‌شات طلایی"""
     path = BASELINE_DIR / f"{name}.txt"
     with open(path, "w", encoding="utf-8") as f:
         for item in sorted(items):
@@ -127,7 +126,6 @@ def clean_domain(line: str) -> Optional[str]:
     if not line or line.startswith(("!", "//", "/*")):
         return None
 
-    # پاکسازی پیشوندهای فرمت‌های ادبلاک و V2Ray و کلش
     line = re.sub(r"^(?:domain:|full:|keyword:|regexp:|\|\|?|@@)", "", line)
     line = re.sub(r"^(?:domain-suffix|domain|domain-keyword),", "", line, flags=re.IGNORECASE)
 
@@ -150,17 +148,14 @@ def clean_domain(line: str) -> Optional[str]:
 def prune_subdomains(domains: Set[str]) -> Set[str]:
     """
     هرس هوشمند زیردامنه‌ها:
-    اگر aparat.com وجود داشته باشد، api.aparat.com و test.api.aparat.com حذف می‌شوند.
-    عملکرد برای Mihomo MRS و DOMAIN-SUFFIX کاملاً تضمین‌شده و ۱۰۰٪ معادل است.
+    اگر aparat.com در لیست باشد، api.aparat.com بدون افت عملکرد حذف می‌شود.
     """
-    # مرتب‌سازی بر اساس تعداد بخش‌ها و سپس طول کاراکتر
     sorted_domains = sorted(domains, key=lambda d: (len(d.split(".")), len(d), d))
     retained_roots = set()
 
     for domain in sorted_domains:
         parts = domain.split(".")
         is_redundant = False
-        # بررسی تمام والد‌های ممکن
         for i in range(1, len(parts)):
             parent = ".".join(parts[i:])
             if parent in PUBLIC_SUFFIX_SET:
@@ -184,7 +179,6 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
         entry = entry.strip()
         if not entry or entry.startswith("#"):
             continue
-        # حذف پیشوندهای کلش در صورت وجود
         entry = re.sub(r"^(?:IP-CIDR|IP-CIDR6),", "", entry, flags=re.IGNORECASE)
         try:
             net = ipaddress.ip_network(entry, strict=False)
@@ -204,7 +198,6 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
 # ==============================================================================
 def find_or_download_mihomo() -> Optional[str]:
     """یافتن باینری میهومو یا دریافت نسخه رسمی برای کامپایل MRS"""
-    # ۱. جستجو در PATH و پوشه فعلی
     for name in ["mihomo", "mihomo.exe"]:
         cmd_path = shutil.which(name) or (BASE_DIR / name)
         if cmd_path and os.path.exists(cmd_path) and os.access(cmd_path, os.X_OK):
@@ -221,16 +214,20 @@ def find_or_download_mihomo() -> Optional[str]:
     target_arch = arch_map.get(machine)
 
     if not target_os or not target_arch:
-        print(f"[!] Unsupported arch for automatic Mihomo download: {uname}-{machine}")
+        print(f"[!] Unsupported architecture for auto Mihomo bootstrap: {uname}-{machine}")
         return None
 
-    # دریافت مشخصات آخرین نسخه از GitHub API
     try:
         api_url = "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
-        req = urllib.request.Request(api_url, headers=HEADERS)
+        api_headers = dict(HEADERS)
+        github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
+        if github_token:
+            api_headers["Authorization"] = f"Bearer {github_token}"
+
+        req = urllib.request.Request(api_url, headers=api_headers)
         with urllib.request.urlopen(req, timeout=15) as r:
             release_data = json.loads(r.read().decode())
-        
+
         target_asset = None
         for asset in release_data.get("assets", []):
             aname = asset["name"].lower()
@@ -242,7 +239,7 @@ def find_or_download_mihomo() -> Optional[str]:
         if target_asset:
             dest_file = BASE_DIR / ("mihomo.zip" if target_os == "windows" else "mihomo.gz")
             urllib.request.urlretrieve(target_asset, dest_file)
-            
+
             if target_os != "windows":
                 import gzip
                 bin_path = BASE_DIR / "mihomo"
@@ -251,13 +248,21 @@ def find_or_download_mihomo() -> Optional[str]:
                 bin_path.chmod(0o755)
                 dest_file.unlink()
                 return str(bin_path)
+            else:
+                with zipfile.ZipFile(dest_file, "r") as zip_ref:
+                    zip_ref.extractall(BASE_DIR)
+                dest_file.unlink()
+                for p in BASE_DIR.glob("*.exe"):
+                    if "mihomo" in p.name.lower():
+                        return str(p)
+
     except Exception as e:
-        print(f"[!] Auto-download failed: {e}. MRS compilation will be skipped if binary is missing.")
+        print(f"[!] Auto-download failed: {e}. MRS will be generated if Mihomo is in PATH.")
 
     return None
 
 def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mrs_file: Path) -> bool:
-    """تبدیل فایل متنی پالایش‌شده به فرمت دودویی MRS بوسیله هسته رسمی Mihomo"""
+    """تبدیل فایل متنی پالایش‌شده به فرمت باینری MRS بوسیله هسته رسمی Mihomo"""
     if not mihomo_bin or not text_file.exists() or text_file.stat().st_size == 0:
         return False
     try:
@@ -266,7 +271,7 @@ def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mr
         if res.returncode == 0 and mrs_file.exists() and mrs_file.stat().st_size > 50:
             return True
         else:
-            print(f"[!] MRS compiler warning for {text_file.name}: {res.stderr.strip()}")
+            print(f"[!] MRS compiler notice for {text_file.name}: {res.stderr.strip()}")
             return False
     except Exception as e:
         print(f"[!] Failed to run MRS compiler: {e}")
@@ -312,7 +317,6 @@ def main():
                 elif parts[2] == "asn":
                     asns.add(f"IP-ASN,{parts[3]}")
 
-    # ادغام با رپوی ygbkm (مراکز داده ایران) و MetaCubeX و Chocolate4U
     extra_ip_sources = [
         "https://raw.githubusercontent.com/ygbkm/resources/refs/heads/main/resources/iran-datacenters/ipv4.txt",
         "https://raw.githubusercontent.com/ygbkm/resources/refs/heads/main/resources/iran-datacenters/ipv6.txt",
@@ -326,14 +330,12 @@ def main():
             if d and not d.startswith("#"):
                 raw_ip_list.append(d)
 
-    # ادغام ASN‌های کمکی
     fallback_asns = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/irasn.txt", timeout=30)
     for line in fallback_asns.splitlines():
         line = line.strip()
         if line and not line.startswith("#"):
             asns.add(line if line.startswith("IP-ASN,") else f"IP-ASN,{line}")
 
-    # اعمال فال‌بک لایه دوم (Baseline Cache) در صورت افت منابع
     if len(raw_ip_list) < 500:
         print("[!] Upstream IP list degraded. Merging with internal Baseline...")
         raw_ip_list.extend(load_baseline("ircidr"))
@@ -348,18 +350,15 @@ def main():
     collapsed_v4, collapsed_v6 = collapse_cidrs(raw_ip_list)
     all_cidrs = [str(n) for n in collapsed_v4] + [str(n) for n in collapsed_v6]
 
-    ircidr_txt = OUTPUT_DIR / "ircidr.txt"
-    with open(ircidr_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "ircidr.txt", "w", encoding="utf-8") as f:
         for net in all_cidrs:
             f.write(f"{net}\n")
 
-    irasn_txt = OUTPUT_DIR / "irasn.txt"
-    with open(irasn_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "irasn.txt", "w", encoding="utf-8") as f:
         for asn in sorted(asns):
             f.write(f"{asn}\n")
 
-    irasn_yaml = OUTPUT_DIR / "irasn.yaml"
-    with open(irasn_yaml, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "irasn.yaml", "w", encoding="utf-8") as f:
         f.write("payload:\n")
         for asn in sorted(asns):
             f.write(f"  - '{asn}'\n")
@@ -377,21 +376,16 @@ def main():
     }
 
     domain_upstreams = [
-        # ygbkm release
         "https://github.com/ygbkm/clash-rules-iran/releases/latest/download/rules.txt",
-        # bootmortis hosted domains
         "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
         "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/clash_rules_other.txt",
-        # Chocolate4U
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir.txt",
-        # ITO Gov Mirror
         "https://raw.githubusercontent.com/bootmortis/ito-gov-mirror/main/out/domains.csv"
     ]
 
     for url in domain_upstreams:
         content = fetch_data(url, timeout=40)
         for line in content.splitlines():
-            # پشتیبانی از فایل CSV آینه فناوری اطلاعات
             if "," in line and not line.startswith("DOMAIN"):
                 parts = line.split(",")
                 if len(parts) >= 2:
@@ -406,17 +400,14 @@ def main():
     else:
         save_baseline("ir", raw_iran_domains)
 
-    # هرس پیشرفته زیردامنه‌ها برای بهینه‌سازی حداکثری فضا و مموری
     initial_count = len(raw_iran_domains)
     pruned_iran_domains = prune_subdomains(raw_iran_domains)
     print(f"[*] Pruned redundant subdomains: {initial_count} -> {len(pruned_iran_domains)} root entities (-{initial_count - len(pruned_iran_domains)})")
 
-    ir_txt = OUTPUT_DIR / "ir.txt"
-    with open(ir_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "ir.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_iran_domains):
             f.write(f"{d}\n")
 
-    # تولید نسخه سبک (ir-lite.txt)
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
     for line in ir_lite_raw.splitlines():
@@ -424,7 +415,7 @@ def main():
         if d:
             lite_domains.add(d)
     pruned_lite = prune_subdomains(lite_domains if len(lite_domains) > 100 else pruned_iran_domains)
-    with open(OUTPUT_DIR / "ir-lite.txt", "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "ir-lite.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_lite):
             f.write(f"{d}\n")
 
@@ -447,14 +438,13 @@ def main():
                 raw_ads.add(d)
 
     pruned_ads = prune_subdomains(raw_ads)
-    ads_txt = OUTPUT_DIR / "ads.txt"
-    with open(ads_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "ads.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_ads):
             f.write(f"{d}\n")
-    print(f"[✓] Compiled {len(pruned_ads)} verified Persian ad domains (Whitelisted & Pruned)")
+    print(f"[✓] Compiled {len(pruned_ads)} verified Persian ad domains")
 
     # --------------------------------------------------------------------------
-    # STEP 4: DOMESTIC PHISHING & SMISHING (PORTAL KEYWORDS + WHITELIST)
+    # STEP 4: DOMESTIC PHISHING & SMISHING
     # --------------------------------------------------------------------------
     print("\n[+] STEP 4: Compiling Domestic Phishing & Fake Portals...")
     phishing_sources = [
@@ -464,7 +454,7 @@ def main():
     ]
     KEYWORD_PATTERN = re.compile(r"(?:^|[.-])(?:shaparak|sana|divar|sadad|sep|mellat|melli|sheba|tejarat|saderat|pasargad|blubank)(?:[.-]|$)")
     raw_phishing = {"phishing-fake-shaparak.top", "ir-sana-gov.com"}
-    
+
     for url in phishing_sources:
         content = fetch_data(url, timeout=30)
         for line in content.splitlines():
@@ -473,19 +463,16 @@ def main():
                 raw_phishing.add(d)
 
     pruned_phishing = prune_subdomains(raw_phishing)
-    phishing_txt = OUTPUT_DIR / "phishing.txt"
-    with open(phishing_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "phishing.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_phishing):
             f.write(f"{d}\n")
-    print(f"[✓] Compiled {len(pruned_phishing)} domestic phishing domains")
 
-    # Phishing IPs
     phishing_ip_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/phishing-ip.txt", timeout=25)
     p_v4, p_v6 = collapse_cidrs(phishing_ip_raw.splitlines())
-    phishing_ip_txt = OUTPUT_DIR / "phishing-ip.txt"
-    with open(phishing_ip_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "phishing-ip.txt", "w", encoding="utf-8") as f:
         for net in (p_v4 + p_v6):
             f.write(f"{net}\n")
+    print(f"[✓] Compiled {len(pruned_phishing)} phishing domains & {len(p_v4 + p_v6)} malicious IPs")
 
     # --------------------------------------------------------------------------
     # STEP 5: DOMESTIC GAMBLING & CASINOS (PERSIAN BET ONLY)
@@ -504,8 +491,7 @@ def main():
                 raw_nsfw.add(d)
 
     pruned_nsfw = prune_subdomains(raw_nsfw)
-    nsfw_txt = OUTPUT_DIR / "nsfw.txt"
-    with open(nsfw_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "nsfw.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_nsfw):
             f.write(f"{d}\n")
     print(f"[✓] Compiled {len(pruned_nsfw)} targeted gambling/nsfw domains")
@@ -521,17 +507,16 @@ def main():
         if d and not is_whitelisted(d):
             raw_malware.add(d)
     pruned_malware = prune_subdomains(raw_malware)
-    malware_txt = OUTPUT_DIR / "malware.txt"
-    with open(malware_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "malware.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_malware):
             f.write(f"{d}\n")
 
     malware_ip_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/malware-ip.txt", timeout=30)
     m_v4, m_v6 = collapse_cidrs(malware_ip_raw.splitlines())
-    malware_ip_txt = OUTPUT_DIR / "malware-ip.txt"
-    with open(malware_ip_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "malware-ip.txt", "w", encoding="utf-8") as f:
         for net in (m_v4 + m_v6):
             f.write(f"{net}\n")
+    print(f"[✓] Compiled {len(pruned_malware)} malware domains & {len(m_v4 + m_v6)} malware IPs")
 
     # --------------------------------------------------------------------------
     # STEP 7: IRANIAN APPS & PROCESSES
@@ -578,8 +563,7 @@ def main():
                 PKG_REGEX.match(pkg) and len(pkg) < 85):
                 compiled_packages.add(pkg)
 
-    apps_txt = OUTPUT_DIR / "apps.txt"
-    with open(apps_txt, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "apps.txt", "w", encoding="utf-8") as f:
         for pkg in sorted(compiled_packages):
             f.write(f"PACKAGE-NAME,{pkg}\n")
         for pkg in sorted(compiled_packages):
@@ -587,8 +571,7 @@ def main():
         for proc in sorted(WINDOWS_PROCESSES):
             f.write(f"PROCESS-NAME,{proc}\n")
 
-    apps_yaml = OUTPUT_DIR / "apps.yaml"
-    with open(apps_yaml, "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "apps.yaml", "w", encoding="utf-8") as f:
         f.write("payload:\n")
         for pkg in sorted(compiled_packages):
             f.write(f"  - 'PACKAGE-NAME,{pkg}'\n")
@@ -606,8 +589,7 @@ def main():
     for cname in cloud_files:
         c_raw = fetch_data(f"https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/{cname}.txt", timeout=25)
         c_v4, c_v6 = collapse_cidrs(c_raw.splitlines())
-        c_txt = OUTPUT_DIR / f"{cname}.txt"
-        with open(c_txt, "w", encoding="utf-8") as f:
+        with open(TEXT_DIR / f"{cname}.txt", "w", encoding="utf-8") as f:
             for net in (c_v4 + c_v6):
                 f.write(f"{net}\n")
 
@@ -615,9 +597,8 @@ def main():
     # STEP 9: UNIFIED CLASSICAL RULES (YGBKM MERGED SPECIFICATION)
     # --------------------------------------------------------------------------
     print("\n[+] STEP 9: Compiling Unified Classical Rules (rules.txt & rules.yaml)...")
-    # برای جلوگیری از تکرار در رول классик، تمام دامنه‌های ir با DOMAIN-SUFFIX,ir پوشش داده می‌شوند
     non_ir_domains = [d for d in pruned_iran_domains if not d.endswith(".ir")]
-    
+
     classical_rules = [
         "GEOIP,ir",
         "DOMAIN-SUFFIX,ir"
@@ -629,51 +610,61 @@ def main():
     for n in collapsed_v6:
         classical_rules.append(f"IP-CIDR6,{n}")
 
-    with open(OUTPUT_DIR / "rules.txt", "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "rules.txt", "w", encoding="utf-8") as f:
         for r in classical_rules:
             f.write(f"{r}\n")
 
-    with open(OUTPUT_DIR / "rules.yaml", "w", encoding="utf-8") as f:
+    with open(TEXT_DIR / "rules.yaml", "w", encoding="utf-8") as f:
         f.write("payload:\n")
         for r in classical_rules:
             f.write(f"  - '{r}'\n")
     print(f"[✓] Unified classical rules built: {len(classical_rules)} rules")
 
     # --------------------------------------------------------------------------
-    # STEP 10: CONVERT SANITIZED TXT TO BINARY MRS
+    # STEP 10: SYNCHRONIZATION & BINARY MRS COMPILATION
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
-    print("⚙️ STEP 10: COMPILING SANITIZED TEXT TO MIHOMO BINARY (.MRS)")
+    print("⚙️ STEP 10: SYNCHRONIZING ARTIFACTS & COMPILING MRS")
     print("=" * 78)
 
+    # ۱. کپی بدون قید و شرط تمام فایل‌های متنی و یمل برای تضمین خالی نماندن مخزن
+    print("[*] Performing mandatory synchronization of text/yaml to output_mrs/...")
+    for f in TEXT_DIR.glob("*.txt"):
+        shutil.copy(f, MRS_DIR / f.name)
+    for f in TEXT_DIR.glob("*.yaml"):
+        shutil.copy(f, MRS_DIR / f.name)
+
+    # ۲. کامپایل باینری‌های MRS در صورت وجود هسته میهومو
     mihomo_bin = find_or_download_mihomo()
     if not mihomo_bin:
-        print("[!] Mihomo binary not available. Plain-text rulesets are preserved, but .mrs compilation skipped.")
+        print("[!] Mihomo binary not available. Plain-text artifacts are fully prepared.")
     else:
         print(f"[+] Using Mihomo compiler binary: {mihomo_bin}")
-        
-        # 1. Domain Rule-Sets -> behavior: domain
+
+        # فقط رفتارهای مجاز domain و ipcidr کامپایل می‌شوند
         domain_targets = ["ir", "ir-lite", "ads", "phishing", "nsfw", "malware"]
         for target in domain_targets:
-            in_txt = OUTPUT_DIR / f"{target}.txt"
-            out_mrs = OUTPUT_DIR / f"{target}.mrs"
-            success = compile_to_mrs(mihomo_bin, "domain", in_txt, out_mrs)
-            status = "✓ Compiled" if success else "✗ Failed"
-            size_kb = out_mrs.stat().st_size / 1024 if out_mrs.exists() else 0
-            print(f"  [{status}] {target}.mrs ({size_kb:.1f} KB)")
+            in_txt = TEXT_DIR / f"{target}.txt"
+            out_mrs = MRS_DIR / f"{target}.mrs"
+            if in_txt.exists():
+                success = compile_to_mrs(mihomo_bin, "domain", in_txt, out_mrs)
+                status = "✓ Compiled" if success else "✗ Failed"
+                size_kb = out_mrs.stat().st_size / 1024 if out_mrs.exists() else 0
+                print(f"  [{status}] {target}.mrs ({size_kb:.1f} KB)")
 
-        # 2. IP CIDR Rule-Sets -> behavior: ipcidr
         ip_targets = ["ircidr", "phishing-ip", "malware-ip"] + cloud_files
         for target in ip_targets:
-            in_txt = OUTPUT_DIR / f"{target}.txt"
-            out_mrs = OUTPUT_DIR / f"{target}.mrs"
-            success = compile_to_mrs(mihomo_bin, "ipcidr", in_txt, out_mrs)
-            status = "✓ Compiled" if success else "✗ Failed"
-            size_kb = out_mrs.stat().st_size / 1024 if out_mrs.exists() else 0
-            print(f"  [{status}] {target}.mrs ({size_kb:.1f} KB)")
+            in_txt = TEXT_DIR / f"{target}.txt"
+            out_mrs = MRS_DIR / f"{target}.mrs"
+            if in_txt.exists():
+                success = compile_to_mrs(mihomo_bin, "ipcidr", in_txt, out_mrs)
+                status = "✓ Compiled" if success else "✗ Failed"
+                size_kb = out_mrs.stat().st_size / 1024 if out_mrs.exists() else 0
+                print(f"  [{status}] {target}.mrs ({size_kb:.1f} KB)")
 
+    total_artifacts = len(list(MRS_DIR.iterdir()))
     print("\n" + "=" * 78)
-    print("🏁 ALL TASKS COMPLETED SUCCESSFULLY. ARTIFACTS READY IN ./release/")
+    print(f"🏁 ALL TASKS COMPLETED. Total Artifacts in ./output_mrs/: {total_artifacts}")
     print("=" * 78)
 
 if __name__ == "__main__":
