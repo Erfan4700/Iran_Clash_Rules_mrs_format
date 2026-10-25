@@ -66,7 +66,7 @@ jobs:
           sudo mv sing-box /usr/local/bin/
           sing-box version
 
-      - name: Run Modular Optimization Engine
+      - name: Run Disjoint Modular Engine
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -74,14 +74,14 @@ jobs:
 
       - name: Compile V2Ray / Xray Official Protobuf Binary DATs
         run: |
-          echo "=== 1. Compiling geosite.dat & iran.dat ==="
+          echo "=== 1. Compiling geosite.dat & iran.dat with official v2fly DLC ==="
           git clone --depth=1 https://github.com/v2fly/domain-list-community.git dlc-builder
           cd dlc-builder
           go run ./ --datapath=../output_text/v2ray_geosite --outputname=geosite.dat --outputdir=../output_mrs/
           cd ..
           cp output_mrs/geosite.dat output_mrs/iran.dat
 
-          echo "=== 2. Compiling geoip.dat ==="
+          echo "=== 2. Compiling geoip.dat with official v2fly GeoIP ==="
           git clone --depth=1 https://github.com/v2fly/geoip.git geoip-builder
           cd geoip-builder
           go run ./ -c ../output_text/v2ray_geoip_config.json
@@ -103,9 +103,9 @@ jobs:
             echo "[-] Baseline is up-to-date. Skipping commit."
           fi
 
-      - name: Verify Generated Artifacts
+      - name: Verify Universal Suite Artifacts
         run: |
-          echo "=== Universal Suite Artifacts ==="
+          echo "=== Universal Suite Artifacts (MRS, SRS, DAT, LIST, JSON, TXT) ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -125,7 +125,7 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
-          RELEASE_NOTES="Automated build featuring Modular & Universal RuleSets: V2Ray/Xray (.dat), Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Granular Categories (Media, Banking, Gov, Gaming, Download). Last synced: $NOW"
+          RELEASE_NOTES="Automated build featuring Disjoint Modular & Universal RuleSets: V2Ray/Xray (.dat), Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Remainder 'iran-other' (Zero Overlap). Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
@@ -165,6 +165,7 @@ jobs:
             "iran-gov.mrs" "iran-gov.srs" "iran-gov.txt" "iran-gov.json" "iran-gov.list"
             "iran-gaming.mrs" "iran-gaming.srs" "iran-gaming.txt" "iran-gaming.json" "iran-gaming.list"
             "iran-download.mrs" "iran-download.srs" "iran-download.txt" "iran-download.json" "iran-download.list"
+            "iran-other.mrs" "iran-other.srs" "iran-other.txt" "iran-other.json" "iran-other.list"
             "iran-unified.txt" "iran-unified.yaml" "iran-unified.list"
           )
 
