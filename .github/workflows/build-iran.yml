@@ -2,7 +2,6 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
-    # اجرا دو بار در روز (ساعت 03:00 و 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -95,17 +94,24 @@ jobs:
           RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
           RELEASE_NOTES="Automated binary MRS & Clean Text build featuring RIPE CIDR aggregation, Subdomain Pruning, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and domestic apps. Last synced: $NOW"
 
+          echo "[*] Ensuring rolling release freshness for tag: $RELEASE_TAG"
+
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            echo "Updating existing release..."
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
-            gh release upload "$RELEASE_TAG" output_mrs/* --clobber
-          else
-            echo "Creating new rolling release..."
-            gh release create "$RELEASE_TAG" output_mrs/* \
-              --title "$RELEASE_TITLE" \
-              --notes "$RELEASE_NOTES" \
-              --latest
+            echo "[-] Deleting old rolling release metadata..."
+            gh release delete "$RELEASE_TAG" --yes --cleanup-tag
           fi
+
+          git tag -d "$RELEASE_TAG" 2>/dev/null || true
+          git push origin :refs/tags/"$RELEASE_TAG" 2>/dev/null || true
+
+          git tag "$RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+
+          echo "[+] Creating clean, fresh rolling release..."
+          gh release create "$RELEASE_TAG" output_mrs/* \
+            --title "$RELEASE_TITLE" \
+            --notes "$RELEASE_NOTES" \
+            --latest
 
       - name: Purge jsDelivr CDN Cache
         run: |
