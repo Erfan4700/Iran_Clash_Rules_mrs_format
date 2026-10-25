@@ -3,7 +3,7 @@ rule-providers:
     type: http
     behavior: domain
     format: mrs
-    url: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-ads.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-ads.mrs"
     path: ./ruleset/iran-ads.mrs
     interval: 86400
 
@@ -11,7 +11,7 @@ rule-providers:
     type: http
     behavior: domain
     format: mrs
-    url: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-security.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-security.mrs"
     path: ./ruleset/iran-security.mrs
     interval: 86400
 
@@ -19,15 +19,23 @@ rule-providers:
     type: http
     behavior: domain
     format: mrs
-    url: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-gambling.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-gambling.mrs"
     path: ./ruleset/iran-gambling.mrs
+    interval: 86400
+
+  iran_apps:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-apps.txt"
+    path: ./ruleset/iran-apps.txt
     interval: 86400
 
   iran_domains:
     type: http
     behavior: domain
     format: mrs
-    url: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-domains.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-domains.mrs"
     path: ./ruleset/iran-domains.mrs
     interval: 86400
 
@@ -35,7 +43,7 @@ rule-providers:
     type: http
     behavior: ipcidr
     format: mrs
-    url: "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/release/iran-ip.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-ip.mrs"
     path: ./ruleset/iran-ip.mrs
     interval: 86400
 
@@ -43,6 +51,9 @@ rules:
   - RULE-SET,iran_ads,REJECT
   - RULE-SET,iran_security,REJECT
   - RULE-SET,iran_gambling,REJECT
+
+  - RULE-SET,iran_apps,DIRECT
   - RULE-SET,iran_domains,DIRECT
   - RULE-SET,iran_ips,DIRECT,no-resolve
+
   - MATCH,PROXY
