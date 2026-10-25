@@ -16,8 +16,7 @@ const ENABLE_IRAN_SECURITY = true; // Block domestic malware, fake payment porta
 const ENABLE_IRAN_GAMBLING = true; // Block domestic gambling and betting portals
 
 // --- [C] Granular Domestic Routing (Iran Modular Services) ---
-// Note: To route all domestic domains via a single master list, enable MASTER_DOMAINS and disable granular modules below.
-const ENABLE_IRAN_BANKING = true; // Direct routing for banks, payment gateways, stock exchange, and crypto exchanges
+const ENABLE_IRAN_BANKING = true; // Direct routing for banks, payment gateways, stock exchange, and crypto
 const ENABLE_IRAN_GOV = true; // Direct routing for government and judicial portals (.gov.ir, Sana, Tax)
 const ENABLE_IRAN_MEDIA = true; // Direct routing for domestic VOD and streaming (Aparat, Filimo, Namava, Telewebion)
 const ENABLE_IRAN_GAMING = true; // Direct routing for domestic game servers, ping reduction, and gaming media
@@ -58,7 +57,8 @@ const SELECTED_HAGEZI_NAME = HAGEZI_TIERS_MAP[HAGEZI_TIER.toLowerCase()] ?? "Hag
 
 // Precompiled memory-resident regular expressions
 const REGEX_JUNK_RULES = /(?:GEOIP|GEOSITE|RULE-SET),[^,\n]*(?<![a-z0-9])(?:CN|CHINA|RU|RUSSIA)(?![a-z0-9])/i;
-const REGEX_PROXY_GROUP = /proxy|auto|select|default|fallback|internet|traffic|manual|nodes/i;
+// Universal proxy group detection (supporting standard names, keywords, and unicode emojis)
+const REGEX_PROXY_GROUP = /proxy|auto|select|fallback|internet|traffic|manual|nodes|default|all|🚀|⚡|♻️|🔰|🎮|🌐/i;
 const REGEX_MATCH_RULE = /^match(?:,|$)/i;
 const REGEX_DIRECT_RULE = /direct/i;
 const REGEX_IP_RULE_PREFIX = /^(?:GEOIP|IP-CIDR|IP-CIDR6|IP-ASN),/i;
@@ -108,7 +108,7 @@ const DNS_BOOTSTRAP_RESOLVERS = Object.freeze([
   "193.186.32.32"
 ]);
 
-// International secure DoH endpoints (routed via proxy tunnel)
+// International secure DoH endpoints
 const DNS_DOH_ENDPOINTS = Object.freeze([
   "https://1.1.1.1/dns-query",
   "https://8.8.8.8/dns-query",
@@ -119,9 +119,6 @@ const DNS_DOH_ENDPOINTS = Object.freeze([
 // 2. MODULAR ARCHITECTURE ENGINES
 // ==============================================================================
 
-/**
- * Module 1: Core Tuner & Global Packet Optimizer
- */
 class CoreTuner {
   static apply(config) {
     config["tcp-concurrent"] = true;
@@ -154,9 +151,6 @@ class CoreTuner {
   }
 }
 
-/**
- * Module 2: Packet Sniffer Engine
- */
 class SnifferEngine {
   static generate() {
     return Object.freeze({
@@ -180,36 +174,39 @@ class SnifferEngine {
   }
 }
 
-/**
- * Module 3: Active Proxy Group Classifier
- */
 class ProxyClassifier {
   static resolvePrimary(groups) {
-    if (!Array.isArray(groups) || groups.length === 0) return "PROXY";
+    if (!Array.isArray(groups) || groups.length === 0) return "DIRECT";
 
-    let matchedSelectGroup = null;
-    let fallbackAutoGroup = null;
-
+    // 1. Try finding a selector group matching standard keywords
     for (let i = 0, len = groups.length; i < len; i++) {
-      const group = groups[i];
-      if (!group) continue;
-      const { type, name } = group;
-
-      const isMatch = REGEX_PROXY_GROUP.test(name);
-      if (type === "select" && isMatch) return name;
-      if (!matchedSelectGroup && isMatch) matchedSelectGroup = name;
-      if (!fallbackAutoGroup && (type === "url-test" || type === "fallback" || type === "load-balance")) {
-        fallbackAutoGroup = name;
+      const g = groups[i];
+      if (g && g.type === "select" && REGEX_PROXY_GROUP.test(g.name)) {
+        return g.name;
       }
     }
 
-    return matchedSelectGroup ?? fallbackAutoGroup ?? groups[0]?.name ?? "PROXY";
+    // 2. Try finding an auto/url-test group
+    for (let i = 0, len = groups.length; i < len; i++) {
+      const g = groups[i];
+      if (g && (g.type === "url-test" || g.type === "fallback") && REGEX_PROXY_GROUP.test(g.name)) {
+        return g.name;
+      }
+    }
+
+    // 3. Fallback to the first available selector group (not reject/direct)
+    for (let i = 0, len = groups.length; i < len; i++) {
+      const g = groups[i];
+      if (g && g.type === "select" && !REGEX_DIRECT_RULE.test(g.name) && g.name.toLowerCase() !== "reject") {
+        return g.name;
+      }
+    }
+
+    // 4. Ultimate fallback to the very first group's actual name in the subscription
+    return groups[0]?.name ?? "DIRECT";
   }
 }
 
-/**
- * Module 4: Rule-Provider Factory (Binary MRS & Classical Text)
- */
 class ProviderFactory {
   static create(name, behavior, format, url, interval) {
     return Object.freeze({
@@ -225,7 +222,7 @@ class ProviderFactory {
   static buildRegistry() {
     const providers = {};
 
-    // 1. HaGeZi Global Filtering Providers
+    // HaGeZi Global Filtering Providers
     providers["hagezi-main"] = this.create(SELECTED_HAGEZI_NAME, "domain", "mrs", `${CDN_HAGEZI_BASE}${SELECTED_HAGEZI_NAME}.mrs`, INTERVAL_STANDARD);
     if (ENABLE_HAGEZI_TIF) providers["hagezi-tif"] = this.create("HageziTIF", "domain", "mrs", `${CDN_HAGEZI_BASE}HageziTIF.mrs`, INTERVAL_SECURITY);
     if (ENABLE_DYNDNS_BLOCK) providers["hagezi-dyndns"] = this.create("HageziDynDNS", "domain", "mrs", `${CDN_HAGEZI_BASE}HageziDynDNS.mrs`, INTERVAL_SECURITY);
@@ -239,7 +236,7 @@ class ProviderFactory {
       providers["hagezi-android"] = this.create("HageziAndroid", "domain", "mrs", `${CDN_HAGEZI_BASE}HageziAndroid.mrs`, INTERVAL_STANDARD);
     }
 
-    // 2. Iran Regional Security & Block Providers
+    // Iran Regional Security Providers
     if (ENABLE_IRAN_ADS) providers["iran-ads"] = this.create("iran-ads", "domain", "mrs", `${CDN_IRAN_BASE}iran-ads.mrs`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_SECURITY) {
       providers["iran-security"] = this.create("iran-security", "domain", "mrs", `${CDN_IRAN_BASE}iran-security.mrs`, INTERVAL_SECURITY);
@@ -247,7 +244,7 @@ class ProviderFactory {
     }
     if (ENABLE_IRAN_GAMBLING) providers["iran-gambling"] = this.create("iran-gambling", "domain", "mrs", `${CDN_IRAN_BASE}iran-gambling.mrs`, INTERVAL_STANDARD);
 
-    // 3. Iran Granular Domestic Routing Modules
+    // Iran Granular Domestic Routing Modules
     if (ENABLE_IRAN_MEDIA) providers["iran-media"] = this.create("iran-media", "domain", "mrs", `${CDN_IRAN_BASE}iran-media.mrs`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_BANKING) providers["iran-banking"] = this.create("iran-banking", "domain", "mrs", `${CDN_IRAN_BASE}iran-banking.mrs`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_GOV) providers["iran-gov"] = this.create("iran-gov", "domain", "mrs", `${CDN_IRAN_BASE}iran-gov.mrs`, INTERVAL_STANDARD);
@@ -255,7 +252,7 @@ class ProviderFactory {
     if (ENABLE_IRAN_DOWNLOAD) providers["iran-download"] = this.create("iran-download", "domain", "mrs", `${CDN_IRAN_BASE}iran-download.mrs`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_OTHER) providers["iran-other"] = this.create("iran-other", "domain", "mrs", `${CDN_IRAN_BASE}iran-other.mrs`, INTERVAL_STANDARD);
 
-    // 4. Iran Master & Infrastructure Modules
+    // Iran Master & Infrastructure Modules
     if (ENABLE_IRAN_MASTER_DOMAINS) providers["iran-domains"] = this.create("iran-domains", "domain", "mrs", `${CDN_IRAN_BASE}iran-domains.mrs`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_APPS) providers["iran-apps"] = this.create("iran-apps", "classical", "text", `${CDN_IRAN_BASE}iran-apps.txt`, INTERVAL_STANDARD);
     if (ENABLE_IRAN_IP) providers["iran-ip"] = this.create("iran-ip", "ipcidr", "mrs", `${CDN_IRAN_BASE}iran-ip.mrs`, INTERVAL_STANDARD);
@@ -266,11 +263,8 @@ class ProviderFactory {
   }
 }
 
-/**
- * Module 5: Smart DNS Engine & Leak Prevention
- */
 class DnsEngine {
-  static configure(config, defaultProxyGroup) {
+  static configure(config, defaultProxyGroup, activeProviders) {
     if (ENABLE_SAFE_SEARCH) {
       Object.assign((config.hosts ??= {}), SAFE_SEARCH_HOSTS);
     }
@@ -292,11 +286,9 @@ class DnsEngine {
     dns["proxy-server-nameserver"] = DNS_PROXY_RESOLVERS;
     dns["direct-nameserver"] = DNS_DOMESTIC_RESOLVERS;
 
-    // Fake-IP Filter Array
-    dns["fake-ip-filter"] = Object.freeze([
+    // Bulletproof Fake-IP Filters (Only include rule-set if provider is actively loaded)
+    const fakeIpFilters = [
       "+.ir",
-      "rule-set:iran-domains",
-      "rule-set:iran-other",
       ...DOMESTIC_WILDCARDS,
       "+.lan", "+.local", "+.home.arpa",
       "captive.apple.com", "+.connectivitycheck.gstatic.com",
@@ -306,32 +298,35 @@ class DnsEngine {
       "+.steamcontent.com", "+.battlenet.com", "+.battle.net", "+.ea.com",
       "stun.*", "*.stun.*", "supl.google.com", "+.supl.google.com",
       "location.services.mozilla.com"
-    ]);
+    ];
+
+    if (activeProviders["iran-domains"]) fakeIpFilters.push("rule-set:iran-domains");
+    if (activeProviders["iran-other"]) fakeIpFilters.push("rule-set:iran-other");
+
+    dns["fake-ip-filter"] = Object.freeze(fakeIpFilters);
 
     // Upstream DoH queries routed through proxy tunnel
     dns.nameserver = DNS_DOH_ENDPOINTS.map(url => `${url}#${defaultProxyGroup}`);
 
-    // Policy mappings for domestic resolutions
+    // Dynamic Nameserver Policy (Zero Missing-Provider Errors)
     const nsPolicy = DOMESTIC_NON_IR_DOMAINS.reduce((acc, domain) => {
       acc[`+.${domain}`] = DNS_DOMESTIC_RESOLVERS;
       return acc;
     }, {
       "+.ir": DNS_DOMESTIC_RESOLVERS,
-      "rule-set:iran-domains": DNS_DOMESTIC_RESOLVERS,
-      "rule-set:iran-other": DNS_DOMESTIC_RESOLVERS,
       "supl.google.com": DNS_DOMESTIC_RESOLVERS,
       "+.supl.google.com": DNS_DOMESTIC_RESOLVERS
     });
+
+    if (activeProviders["iran-domains"]) nsPolicy["rule-set:iran-domains"] = DNS_DOMESTIC_RESOLVERS;
+    if (activeProviders["iran-other"]) nsPolicy["rule-set:iran-other"] = DNS_DOMESTIC_RESOLVERS;
 
     Object.assign((dns["nameserver-policy"] ??= {}), Object.freeze(nsPolicy));
   }
 }
 
-/**
- * Module 6: Traffic Rules Engine & Assembler
- */
 class RulesEngine {
-  static assemble(config, defaultProxyGroup) {
+  static assemble(config, defaultProxyGroup, activeProviders) {
     const ruleSet = new Set();
 
     // 1. RFC1918 Private & Local CIDRs
@@ -353,45 +348,43 @@ class RulesEngine {
     for (let i = 0; i < RFC1918_RULES.length; i++) ruleSet.add(RFC1918_RULES[i]);
 
     // 2. Global Threat Defense (HaGeZi)
-    ruleSet.add("RULE-SET,hagezi-main,REJECT");
-    if (ENABLE_HAGEZI_TIF) ruleSet.add("RULE-SET,hagezi-tif,REJECT");
-    if (ENABLE_DYNDNS_BLOCK) ruleSet.add("RULE-SET,hagezi-dyndns,REJECT");
-    if (ENABLE_PORN_FILTER) ruleSet.add("RULE-SET,hagezi-nsfw,REJECT");
-    if (ENABLE_GAMBLING_FILTER) ruleSet.add("RULE-SET,hagezi-gambling,REJECT");
-    if (ENABLE_NATIVE_TRACKERS) {
-      ruleSet.add("RULE-SET,hagezi-windows,REJECT");
-      ruleSet.add("RULE-SET,hagezi-apple,REJECT");
-      ruleSet.add("RULE-SET,hagezi-xiaomi,REJECT");
-      ruleSet.add("RULE-SET,hagezi-android,REJECT");
-    }
+    if (activeProviders["hagezi-main"]) ruleSet.add("RULE-SET,hagezi-main,REJECT");
+    if (activeProviders["hagezi-tif"]) ruleSet.add("RULE-SET,hagezi-tif,REJECT");
+    if (activeProviders["hagezi-dyndns"]) ruleSet.add("RULE-SET,hagezi-dyndns,REJECT");
+    if (activeProviders["hagezi-nsfw"]) ruleSet.add("RULE-SET,hagezi-nsfw,REJECT");
+    if (activeProviders["hagezi-gambling"]) ruleSet.add("RULE-SET,hagezi-gambling,REJECT");
+    if (activeProviders["hagezi-windows"]) ruleSet.add("RULE-SET,hagezi-windows,REJECT");
+    if (activeProviders["hagezi-apple"]) ruleSet.add("RULE-SET,hagezi-apple,REJECT");
+    if (activeProviders["hagezi-xiaomi"]) ruleSet.add("RULE-SET,hagezi-xiaomi,REJECT");
+    if (activeProviders["hagezi-android"]) ruleSet.add("RULE-SET,hagezi-android,REJECT");
 
     // 3. Regional Threat & Adblock
-    if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-ads,REJECT");
-    if (ENABLE_IRAN_SECURITY) {
+    if (activeProviders["iran-ads"]) ruleSet.add("RULE-SET,iran-ads,REJECT");
+    if (activeProviders["iran-security"]) {
       ruleSet.add("RULE-SET,iran-security,REJECT");
       ruleSet.add("RULE-SET,iran-security-ip,REJECT,no-resolve");
     }
-    if (ENABLE_IRAN_GAMBLING) ruleSet.add("RULE-SET,iran-gambling,REJECT");
+    if (activeProviders["iran-gambling"]) ruleSet.add("RULE-SET,iran-gambling,REJECT");
 
     // 4. Applications Routing
-    if (ENABLE_IRAN_APPS) ruleSet.add("RULE-SET,iran-apps,DIRECT,no-resolve");
+    if (activeProviders["iran-apps"]) ruleSet.add("RULE-SET,iran-apps,DIRECT,no-resolve");
 
     // 5. Domestic Granular Modules (Direct Traffic)
-    if (ENABLE_IRAN_BANKING) ruleSet.add("RULE-SET,iran-banking,DIRECT");
-    if (ENABLE_IRAN_GOV) ruleSet.add("RULE-SET,iran-gov,DIRECT");
-    if (ENABLE_IRAN_MEDIA) ruleSet.add("RULE-SET,iran-media,DIRECT");
-    if (ENABLE_IRAN_GAMING) ruleSet.add("RULE-SET,iran-gaming,DIRECT");
-    if (ENABLE_IRAN_DOWNLOAD) ruleSet.add("RULE-SET,iran-download,DIRECT");
-    if (ENABLE_IRAN_OTHER) ruleSet.add("RULE-SET,iran-other,DIRECT");
+    if (activeProviders["iran-banking"]) ruleSet.add("RULE-SET,iran-banking,DIRECT");
+    if (activeProviders["iran-gov"]) ruleSet.add("RULE-SET,iran-gov,DIRECT");
+    if (activeProviders["iran-media"]) ruleSet.add("RULE-SET,iran-media,DIRECT");
+    if (activeProviders["iran-gaming"]) ruleSet.add("RULE-SET,iran-gaming,DIRECT");
+    if (activeProviders["iran-download"]) ruleSet.add("RULE-SET,iran-download,DIRECT");
+    if (activeProviders["iran-other"]) ruleSet.add("RULE-SET,iran-other,DIRECT");
 
     // 6. Domestic Infrastructure & Fallback Master
     for (let i = 0; i < DOMESTIC_NON_IR_RULES.length; i++) ruleSet.add(DOMESTIC_NON_IR_RULES[i]);
     ruleSet.add("DOMAIN-SUFFIX,ir,DIRECT");
 
-    if (ENABLE_IRAN_MASTER_DOMAINS) ruleSet.add("RULE-SET,iran-domains,DIRECT");
-    if (ENABLE_IRAN_CLOUD) ruleSet.add("RULE-SET,iran-cloud,DIRECT,no-resolve");
-    if (ENABLE_IRAN_IP) ruleSet.add("RULE-SET,iran-ip,DIRECT,no-resolve");
-    if (ENABLE_IRAN_ASN) ruleSet.add("RULE-SET,iran-asn,DIRECT,no-resolve");
+    if (activeProviders["iran-domains"]) ruleSet.add("RULE-SET,iran-domains,DIRECT");
+    if (activeProviders["iran-cloud"]) ruleSet.add("RULE-SET,iran-cloud,DIRECT,no-resolve");
+    if (activeProviders["iran-ip"]) ruleSet.add("RULE-SET,iran-ip,DIRECT,no-resolve");
+    if (activeProviders["iran-asn"]) ruleSet.add("RULE-SET,iran-asn,DIRECT,no-resolve");
 
     // 7. Network Protections
     if (ENABLE_QUIC_BLOCK) ruleSet.add("AND,((NETWORK,UDP),(DST-PORT,443)),REJECT");
@@ -440,27 +433,28 @@ class RulesEngine {
 }
 
 // ==============================================================================
-// 3. PIPELINE ORCHESTRATOR (MAIN COORDINATOR)
+// 3. PIPELINE ORCHESTRATOR
 // ==============================================================================
 
 function main(config, profileName) {
-  // Step 1: Detect and resolve primary proxy group
+  // 1. Detect and resolve primary proxy group dynamically
   const defaultProxyGroup = ProxyClassifier.resolvePrimary(config["proxy-groups"]);
 
-  // Step 2: Tune engine parameters and performance flags
+  // 2. Tune engine parameters and performance flags
   CoreTuner.apply(config);
 
-  // Step 3: Configure packet sniffer
+  // 3. Configure packet sniffer
   config.sniffer = SnifferEngine.generate();
 
-  // Step 4: Configure Fake-IP DNS and leak prevention
-  DnsEngine.configure(config, defaultProxyGroup);
+  // 4. Build active rule-providers dictionary
+  const activeProviders = ProviderFactory.buildRegistry();
+  Object.assign((config["rule-providers"] ??= {}), activeProviders);
 
-  // Step 5: Register modern jsDelivr rule-providers
-  Object.assign((config["rule-providers"] ??= {}), ProviderFactory.buildRegistry());
+  // 5. Configure DNS safely using only active providers
+  DnsEngine.configure(config, defaultProxyGroup, activeProviders);
 
-  // Step 6: Assemble and optimize routing rule hierarchy
-  RulesEngine.assemble(config, defaultProxyGroup);
+  // 6. Assemble and optimize routing rule hierarchy
+  RulesEngine.assemble(config, defaultProxyGroup, activeProviders);
 
   return config;
 }
