@@ -7,20 +7,20 @@ rule-providers:
     path: ./ruleset/iran-ads.mrs
     interval: 86400
 
-  iran_media:
-    type: http
-    behavior: domain
-    format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-media.mrs"
-    path: ./ruleset/iran-media.mrs
-    interval: 86400
-
   iran_banking:
     type: http
     behavior: domain
     format: mrs
     url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-banking.mrs"
     path: ./ruleset/iran-banking.mrs
+    interval: 86400
+
+  iran_media:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-media.mrs"
+    path: ./ruleset/iran-media.mrs
     interval: 86400
 
   iran_gaming:
@@ -31,12 +31,12 @@ rule-providers:
     path: ./ruleset/iran-gaming.mrs
     interval: 86400
 
-  iran_domains:
+  iran_other:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-domains.mrs"
-    path: ./ruleset/iran-domains.mrs
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-other.mrs"
+    path: ./ruleset/iran-other.mrs
     interval: 86400
 
 rules:
@@ -44,5 +44,5 @@ rules:
   - RULE-SET,iran_banking,DIRECT
   - RULE-SET,iran_media,DIRECT
   - RULE-SET,iran_gaming,DIRECT
-  - RULE-SET,iran_domains,DIRECT
+  - RULE-SET,iran_other,DIRECT
   - MATCH,PROXY
