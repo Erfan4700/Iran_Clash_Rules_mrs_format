@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-Enterprise Rule-Set Engine for Mihomo / Clash Meta
-Powered by Mozilla Public Suffix List (tldextract) & Clean Process Taxonomy
+Universal Multi-Platform Rule-Set Suite
+Targets: Mihomo (.mrs) | Sing-box (.srs / .json) | Surge & Shadowrocket (.list)
 ================================================================================
 """
 
@@ -13,6 +13,7 @@ import sys
 import json
 import shutil
 import zipfile
+import tarfile
 import platform
 import subprocess
 import ipaddress
@@ -20,16 +21,16 @@ import urllib.request
 from typing import Set, List, Tuple, Optional
 from pathlib import Path
 
-# --- BOOTSTRAP TLDEXTRACT FOR BULLETPROOF DOMAIN PARSING ---
+# --- BOOTSTRAP TLDEXTRACT (MOZILLA PSL) ---
 try:
     import tldextract
 except ImportError:
-    print("[*] Installing official 'tldextract' library for Mozilla PSL parsing...")
+    print("[*] Installing 'tldextract' for Mozilla PSL parsing...")
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "install", "tldextract", "--quiet"])
         import tldextract
     except Exception as e:
-        print(f"[!] Warning: Could not auto-install tldextract ({e}). Falling back to standard parser.")
+        print(f"[!] Warning: Could not auto-install tldextract ({e}).")
         tldextract = None
 
 EXTRACTOR = tldextract.TLDExtract(cache_dir=str(Path(__file__).resolve().parent / ".tld_cache")) if tldextract else None
@@ -77,7 +78,7 @@ def is_whitelisted(domain: str) -> bool:
     return any(domain == safe or domain.endswith("." + safe) for safe in UNBREAK_WHITELIST)
 
 # ==============================================================================
-# UTILITIES: NETWORK FETCHING & BASELINE RESILIENCE
+# UTILITIES: FETCHING & BASELINE RESILIENCE
 # ==============================================================================
 def fetch_data(urls, timeout: int = 60, min_len: int = 20) -> str:
     if isinstance(urls, str):
@@ -117,7 +118,7 @@ def save_baseline(name: str, items: Set[str]) -> None:
             f.write(f"{item}\n")
 
 # ==============================================================================
-# BULLETPROOF DOMAIN PURIFICATION & PSL SUBDOMAIN PRUNING
+# DOMAIN PURIFICATION & MOZILLA PSL PRUNING
 # ==============================================================================
 DOMAIN_REGEX = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$")
 
@@ -210,68 +211,60 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
     return collapsed_v4, collapsed_v6
 
 # ==============================================================================
-# MIHOMO MRS COMPILER INTEGRATION
+# MULTI-PLATFORM EXPORTERS (SING-BOX JSON & SURGE/SHADOWROCKET LIST)
 # ==============================================================================
-def find_or_download_mihomo() -> Optional[str]:
-    for name in ["mihomo", "mihomo.exe"]:
-        cmd_path = shutil.which(name) or (BASE_DIR / name)
-        if cmd_path and os.path.exists(cmd_path) and os.access(cmd_path, os.X_OK):
-            return str(cmd_path)
+def save_singbox_domain_json(domains: Set[str], out_path: Path):
+    """خروجی رسمی استاندارد Rule-Set Headless برای Sing-box"""
+    data = {
+        "version": 1,
+        "rules": [
+            {
+                "domain_suffix": sorted(domains)
+            }
+        ]
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-    uname = platform.system().lower()
-    machine = platform.machine().lower()
-    os_map = {"linux": "linux", "darwin": "darwin", "windows": "windows"}
-    arch_map = {"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}
+def save_singbox_ip_json(cidrs: List[str], out_path: Path):
+    data = {
+        "version": 1,
+        "rules": [
+            {
+                "ip_cidr": cidrs
+            }
+        ]
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-    target_os = os_map.get(uname)
-    target_arch = arch_map.get(machine)
+def save_singbox_apps_json(packages: Set[str], processes: List[str], out_path: Path):
+    data = {
+        "version": 1,
+        "rules": [
+            {
+                "package_name": sorted(packages),
+                "process_name": sorted(processes)
+            }
+        ]
+    }
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
-    if not target_os or not target_arch:
-        return None
+def save_surge_domain_list(domains: Set[str], out_path: Path):
+    """خروجی رسمی Rule-Set برای Surge, Shadowrocket, Loon, Stash"""
+    with open(out_path, "w", encoding="utf-8") as f:
+        for d in sorted(domains):
+            f.write(f"DOMAIN-SUFFIX,{d}\n")
 
-    try:
-        api_url = "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
-        api_headers = dict(HEADERS)
-        github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
-        if github_token:
-            api_headers["Authorization"] = f"Bearer {github_token}"
+def save_surge_ip_list(cidrs: List[str], out_path: Path):
+    with open(out_path, "w", encoding="utf-8") as f:
+        for c in cidrs:
+            f.write(f"IP-CIDR,{c},no-resolve\n")
 
-        req = urllib.request.Request(api_url, headers=api_headers)
-        with urllib.request.urlopen(req, timeout=15) as r:
-            release_data = json.loads(r.read().decode())
-
-        target_asset = None
-        for asset in release_data.get("assets", []):
-            aname = asset["name"].lower()
-            if target_os in aname and target_arch in aname and "compatible" not in aname:
-                if (target_os == "windows" and aname.endswith(".zip")) or (target_os != "windows" and aname.endswith(".gz")):
-                    target_asset = asset["browser_download_url"]
-                    break
-
-        if target_asset:
-            dest_file = BASE_DIR / ("mihomo.zip" if target_os == "windows" else "mihomo.gz")
-            urllib.request.urlretrieve(target_asset, dest_file)
-
-            if target_os != "windows":
-                import gzip
-                bin_path = BASE_DIR / "mihomo"
-                with gzip.open(dest_file, "rb") as f_in, open(bin_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-                bin_path.chmod(0o755)
-                dest_file.unlink()
-                return str(bin_path)
-            else:
-                with zipfile.ZipFile(dest_file, "r") as zip_ref:
-                    zip_ref.extractall(BASE_DIR)
-                dest_file.unlink()
-                for p in BASE_DIR.glob("*.exe"):
-                    if "mihomo" in p.name.lower():
-                        return str(p)
-    except Exception:
-        pass
-
-    return None
-
+# ==============================================================================
+# BINARY COMPILERS INTEGRATION (MIHOMO & SING-BOX)
+# ==============================================================================
 def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mrs_file: Path) -> bool:
     if not mihomo_bin or not text_file.exists() or text_file.stat().st_size == 0:
         return False
@@ -282,12 +275,23 @@ def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mr
     except Exception:
         return False
 
+def compile_to_srs(singbox_bin: Optional[str], json_file: Path, srs_file: Path) -> bool:
+    """کامپایل باینری به فرمت zlib فشرده SRS بوسیله هسته رسمی Sing-box"""
+    if not singbox_bin or not json_file.exists() or json_file.stat().st_size == 0:
+        return False
+    try:
+        cmd = [singbox_bin, "rule-set", "compile", "--output", str(srs_file), str(json_file)]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        return (res.returncode == 0 and srs_file.exists() and srs_file.stat().st_size > 50)
+    except Exception:
+        return False
+
 # ==============================================================================
 # MAIN PIPELINE EXECUTION
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 MODERN PIPELINE: IRAN RULESET SUITE (PSL & CLEAN LOGS EDITION)")
+    print("🚀 UNIVERSAL MULTI-PLATFORM ENGINE (MIHOMO + SING-BOX + SHADOWROCKET)")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
@@ -357,11 +361,12 @@ def main():
     with open(TEXT_DIR / "iran-ip.txt", "w", encoding="utf-8") as f:
         for net in all_cidrs:
             f.write(f"{net}\n")
+    save_surge_ip_list(all_cidrs, TEXT_DIR / "iran-ip.list")
+    save_singbox_ip_json(all_cidrs, TEXT_DIR / "iran-ip.json")
 
     with open(TEXT_DIR / "iran-asn.txt", "w", encoding="utf-8") as f:
         for asn in sorted(asns):
             f.write(f"{asn}\n")
-
     with open(TEXT_DIR / "iran-asn.yaml", "w", encoding="utf-8") as f:
         f.write("payload:\n")
         for asn in sorted(asns):
@@ -380,10 +385,13 @@ def main():
         raw_cloud_cidrs.extend(c_raw.splitlines())
 
     cloud_v4, cloud_v6 = collapse_cidrs(raw_cloud_cidrs)
+    all_cloud_cidrs = [str(n) for n in (cloud_v4 + cloud_v6)]
     with open(TEXT_DIR / "iran-cloud.txt", "w", encoding="utf-8") as f:
-        for net in (cloud_v4 + cloud_v6):
+        for net in all_cloud_cidrs:
             f.write(f"{net}\n")
-    print(f"[✓] iran-cloud: {len(cloud_v4 + cloud_v6)} cloud CIDRs")
+    save_surge_ip_list(all_cloud_cidrs, TEXT_DIR / "iran-cloud.list")
+    save_singbox_ip_json(all_cloud_cidrs, TEXT_DIR / "iran-cloud.json")
+    print(f"[✓] iran-cloud: {len(all_cloud_cidrs)} cloud CIDRs")
 
     # --------------------------------------------------------------------------
     # 3. IRANIAN DOMAINS WITH PSL PRUNING
@@ -423,6 +431,8 @@ def main():
     with open(TEXT_DIR / "iran-domains.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_iran_domains):
             f.write(f"{d}\n")
+    save_surge_domain_list(pruned_iran_domains, TEXT_DIR / "iran-domains.list")
+    save_singbox_domain_json(pruned_iran_domains, TEXT_DIR / "iran-domains.json")
 
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
@@ -434,6 +444,8 @@ def main():
     with open(TEXT_DIR / "iran-domains-lite.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_lite):
             f.write(f"{d}\n")
+    save_surge_domain_list(pruned_lite, TEXT_DIR / "iran-domains-lite.list")
+    save_singbox_domain_json(pruned_lite, TEXT_DIR / "iran-domains-lite.json")
     print(f"[✓] iran-domains: {len(pruned_iran_domains)} roots | lite: {len(pruned_lite)}")
 
     # --------------------------------------------------------------------------
@@ -458,6 +470,8 @@ def main():
     with open(TEXT_DIR / "iran-ads.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_ads):
             f.write(f"{d}\n")
+    save_surge_domain_list(pruned_ads, TEXT_DIR / "iran-ads.list")
+    save_singbox_domain_json(pruned_ads, TEXT_DIR / "iran-ads.json")
     print(f"[✓] iran-ads: {len(pruned_ads)} domains")
 
     # --------------------------------------------------------------------------
@@ -490,6 +504,8 @@ def main():
     with open(TEXT_DIR / "iran-security.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_threats):
             f.write(f"{d}\n")
+    save_surge_domain_list(pruned_threats, TEXT_DIR / "iran-security.list")
+    save_singbox_domain_json(pruned_threats, TEXT_DIR / "iran-security.json")
 
     threat_ip_sources = [
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/phishing-ip.txt",
@@ -501,10 +517,13 @@ def main():
         raw_threat_ips.extend(content.splitlines())
 
     t_v4, t_v6 = collapse_cidrs(raw_threat_ips)
+    all_threat_cidrs = [str(n) for n in (t_v4 + t_v6)]
     with open(TEXT_DIR / "iran-security-ip.txt", "w", encoding="utf-8") as f:
-        for net in (t_v4 + t_v6):
+        for net in all_threat_cidrs:
             f.write(f"{net}\n")
-    print(f"[✓] iran-security: {len(pruned_threats)} domains | iran-security-ip: {len(t_v4 + t_v6)} CIDRs")
+    save_surge_ip_list(all_threat_cidrs, TEXT_DIR / "iran-security-ip.list")
+    save_singbox_ip_json(all_threat_cidrs, TEXT_DIR / "iran-security-ip.json")
+    print(f"[✓] iran-security: {len(pruned_threats)} domains | iran-security-ip: {len(all_threat_cidrs)} CIDRs")
 
     # --------------------------------------------------------------------------
     # 6. DOMESTIC GAMBLING & CASINOS
@@ -526,12 +545,14 @@ def main():
     with open(TEXT_DIR / "iran-gambling.txt", "w", encoding="utf-8") as f:
         for d in sorted(pruned_gambling):
             f.write(f"{d}\n")
+    save_surge_domain_list(pruned_gambling, TEXT_DIR / "iran-gambling.list")
+    save_singbox_domain_json(pruned_gambling, TEXT_DIR / "iran-gambling.json")
     print(f"[✓] iran-gambling: {len(pruned_gambling)} domains")
 
     # --------------------------------------------------------------------------
-    # 7. DOMESTIC APPS: STRICT SEPARATION (NO OVERLAPPING LOGS)
+    # 7. DOMESTIC APPS & UNIFIED CLASSICAL
     # --------------------------------------------------------------------------
-    print("\n[+] 7/7: Compiling Applications with Strict Environment Separation...")
+    print("\n[+] 7/7: Compiling Applications & Unified Classical...")
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -586,7 +607,9 @@ def main():
         for proc in sorted(WINDOWS_PROCESSES):
             f.write(f"  - 'PROCESS-NAME,{proc}'\n")
 
-    # Unified Classical (iran-unified.txt & .yaml)
+    save_singbox_apps_json(compiled_packages, WINDOWS_PROCESSES, TEXT_DIR / "iran-apps.json")
+
+    # Unified Classical (iran-unified.txt, .yaml & .list)
     non_ir_domains = [d for d in pruned_iran_domains if not d.endswith(".ir")]
     classical_rules = ["GEOIP,ir", "DOMAIN-SUFFIX,ir"]
     for d in sorted(non_ir_domains):
@@ -605,39 +628,64 @@ def main():
         for r in classical_rules:
             f.write(f"  - '{r}'\n")
 
-    print(f"[✓] iran-apps: {len(compiled_packages)} android packages & {len(WINDOWS_PROCESSES)} desktop processes")
+    with open(TEXT_DIR / "iran-unified.list", "w", encoding="utf-8") as f:
+        for d in sorted(pruned_iran_domains):
+            f.write(f"DOMAIN-SUFFIX,{d}\n")
+        for n in all_cidrs:
+            f.write(f"IP-CIDR,{n},no-resolve\n")
+
+    print(f"[✓] iran-apps: {len(compiled_packages)} apps | iran-unified: {len(classical_rules)} rules")
 
     # --------------------------------------------------------------------------
-    # 8. SYNCHRONIZE & COMPILE MRS
+    # 8. SYNCHRONIZE & COMPILE (MIHOMO .MRS & SING-BOX .SRS)
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
-    print("⚙️ COMPILATION OF PURE MODERN ARTIFACTS")
+    print("⚙️ DUAL COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
     print("=" * 78)
 
     for f in TEXT_DIR.glob("*.*"):
         shutil.copy(f, MRS_DIR / f.name)
 
-    mihomo_bin = find_or_download_mihomo()
-    if mihomo_bin:
-        print(f"[+] Compiler active: {mihomo_bin}")
+    mihomo_bin = shutil.which("mihomo") or shutil.which("mihomo.exe") or (BASE_DIR / "mihomo")
+    if mihomo_bin and os.path.exists(mihomo_bin):
+        print(f"[+] Mihomo Core Active: {mihomo_bin}")
         domain_targets = ["iran-domains", "iran-domains-lite", "iran-ads", "iran-security", "iran-gambling"]
         for target in domain_targets:
             in_txt = TEXT_DIR / f"{target}.txt"
             out_mrs = MRS_DIR / f"{target}.mrs"
             if in_txt.exists():
-                success = compile_to_mrs(mihomo_bin, "domain", in_txt, out_mrs)
-                print(f"  [{'✓' if success else '✗'}] {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
+                success = compile_to_mrs(str(mihomo_bin), "domain", in_txt, out_mrs)
+                print(f"  [{'✓' if success else '✗'}] Mihomo MRS: {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
 
         ip_targets = ["iran-ip", "iran-cloud", "iran-security-ip"]
         for target in ip_targets:
             in_txt = TEXT_DIR / f"{target}.txt"
             out_mrs = MRS_DIR / f"{target}.mrs"
             if in_txt.exists():
-                success = compile_to_mrs(mihomo_bin, "ipcidr", in_txt, out_mrs)
-                print(f"  [{'✓' if success else '✗'}] {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
+                success = compile_to_mrs(str(mihomo_bin), "ipcidr", in_txt, out_mrs)
+                print(f"  [{'✓' if success else '✗'}] Mihomo MRS: {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
+    else:
+        print("[!] Mihomo core not found. Skipping .mrs binary generation.")
 
+    singbox_bin = shutil.which("sing-box") or shutil.which("sing-box.exe") or (BASE_DIR / "sing-box")
+    if singbox_bin and os.path.exists(singbox_bin):
+        print(f"[+] Sing-box Core Active: {singbox_bin}")
+        srs_targets = [
+            "iran-domains", "iran-domains-lite", "iran-ip", "iran-cloud",
+            "iran-ads", "iran-security", "iran-security-ip", "iran-gambling", "iran-apps"
+        ]
+        for target in srs_targets:
+            in_json = TEXT_DIR / f"{target}.json"
+            out_srs = MRS_DIR / f"{target}.srs"
+            if in_json.exists():
+                success = compile_to_srs(str(singbox_bin), in_json, out_srs)
+                print(f"  [{'✓' if success else '✗'}] Sing-box SRS: {target}.srs ({out_srs.stat().st_size/1024:.1f} KB)")
+    else:
+        print("[!] Sing-box core not found. Skipping .srs binary generation.")
+
+    total_artifacts = len(list(MRS_DIR.iterdir()))
     print("\n" + "=" * 78)
-    print(f"🏁 COMPLETED: Exactly {len(list(MRS_DIR.iterdir()))} pure modern artifacts in ./output_mrs/")
+    print(f"🏁 PIPELINE COMPLETED: {total_artifacts} Universal Artifacts in ./output_mrs/")
     print("=" * 78)
 
 if __name__ == "__main__":
