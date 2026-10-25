@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-Universal Multi-Platform Rule-Set Suite
-Targets: Mihomo (.mrs) | Sing-box (.srs / .json) | Surge & Shadowrocket (.list)
+Universal Multi-Platform Rule-Set Suite (Master Edition)
+Outputs:
+  - Mihomo / Clash Meta: .mrs (Binary) | .txt | .yaml
+  - Sing-box:            .srs (Binary) | .json (Source)
+  - Surge / Shadowrocket:.list
+  - V2Ray / Xray:        geosite.dat | geoip.dat | iran.dat
 ================================================================================
 """
 
@@ -13,7 +17,6 @@ import sys
 import json
 import shutil
 import zipfile
-import tarfile
 import platform
 import subprocess
 import ipaddress
@@ -41,9 +44,15 @@ TEXT_DIR = BASE_DIR / "output_text"
 MRS_DIR = BASE_DIR / "output_mrs"
 BASELINE_DIR = BASE_DIR / "data" / "baseline"
 
+# دایرکتوری‌های میانی برای کامپایلرهای رسمی V2Ray Protobuf
+V2RAY_GEOSITE_DIR = TEXT_DIR / "v2ray_geosite"
+V2RAY_GEOIP_DIR = TEXT_DIR / "v2ray_geoip" / "data"
+
 TEXT_DIR.mkdir(parents=True, exist_ok=True)
 MRS_DIR.mkdir(parents=True, exist_ok=True)
 BASELINE_DIR.mkdir(parents=True, exist_ok=True)
+V2RAY_GEOSITE_DIR.mkdir(parents=True, exist_ok=True)
+V2RAY_GEOIP_DIR.mkdir(parents=True, exist_ok=True)
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 HEADERS = {"User-Agent": USER_AGENT}
@@ -211,48 +220,24 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
     return collapsed_v4, collapsed_v6
 
 # ==============================================================================
-# MULTI-PLATFORM EXPORTERS (SING-BOX JSON & SURGE/SHADOWROCKET LIST)
+# MULTI-PLATFORM EXPORTERS
 # ==============================================================================
 def save_singbox_domain_json(domains: Set[str], out_path: Path):
-    """خروجی رسمی استاندارد Rule-Set Headless برای Sing-box"""
-    data = {
-        "version": 1,
-        "rules": [
-            {
-                "domain_suffix": sorted(domains)
-            }
-        ]
-    }
+    data = {"version": 1, "rules": [{"domain_suffix": sorted(domains)}]}
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def save_singbox_ip_json(cidrs: List[str], out_path: Path):
-    data = {
-        "version": 1,
-        "rules": [
-            {
-                "ip_cidr": cidrs
-            }
-        ]
-    }
+    data = {"version": 1, "rules": [{"ip_cidr": cidrs}]}
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def save_singbox_apps_json(packages: Set[str], processes: List[str], out_path: Path):
-    data = {
-        "version": 1,
-        "rules": [
-            {
-                "package_name": sorted(packages),
-                "process_name": sorted(processes)
-            }
-        ]
-    }
+    data = {"version": 1, "rules": [{"package_name": sorted(packages), "process_name": sorted(processes)}]}
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 def save_surge_domain_list(domains: Set[str], out_path: Path):
-    """خروجی رسمی Rule-Set برای Surge, Shadowrocket, Loon, Stash"""
     with open(out_path, "w", encoding="utf-8") as f:
         for d in sorted(domains):
             f.write(f"DOMAIN-SUFFIX,{d}\n")
@@ -262,8 +247,15 @@ def save_surge_ip_list(cidrs: List[str], out_path: Path):
         for c in cidrs:
             f.write(f"IP-CIDR,{c},no-resolve\n")
 
+def write_v2ray_domain_tag(domains: Set[str], tag_name: str):
+    """ذخیره دامنه‌ها در ساختار دایرکتوری کامپایلر V2Ray DLC"""
+    tag_file = V2RAY_GEOSITE_DIR / tag_name
+    with open(tag_file, "w", encoding="utf-8") as f:
+        for d in sorted(domains):
+            f.write(f"{d}\n")
+
 # ==============================================================================
-# BINARY COMPILERS INTEGRATION (MIHOMO & SING-BOX)
+# BINARY COMPILERS INTEGRATION
 # ==============================================================================
 def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mrs_file: Path) -> bool:
     if not mihomo_bin or not text_file.exists() or text_file.stat().st_size == 0:
@@ -276,7 +268,6 @@ def compile_to_mrs(mihomo_bin: Optional[str], behavior: str, text_file: Path, mr
         return False
 
 def compile_to_srs(singbox_bin: Optional[str], json_file: Path, srs_file: Path) -> bool:
-    """کامپایل باینری به فرمت zlib فشرده SRS بوسیله هسته رسمی Sing-box"""
     if not singbox_bin or not json_file.exists() or json_file.stat().st_size == 0:
         return False
     try:
@@ -291,7 +282,7 @@ def compile_to_srs(singbox_bin: Optional[str], json_file: Path, srs_file: Path) 
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 UNIVERSAL MULTI-PLATFORM ENGINE (MIHOMO + SING-BOX + SHADOWROCKET)")
+    print("🚀 UNIVERSAL MULTI-PLATFORM ENGINE (MIHOMO + SINGBOX + V2RAY + SURGE)")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
@@ -364,6 +355,14 @@ def main():
     save_surge_ip_list(all_cidrs, TEXT_DIR / "iran-ip.list")
     save_singbox_ip_json(all_cidrs, TEXT_DIR / "iran-ip.json")
 
+    # ذخیره در ساختار V2Ray GeoIP برای کامپایلر go
+    with open(V2RAY_GEOIP_DIR / "ir", "w", encoding="utf-8") as f:
+        for net in all_cidrs:
+            f.write(f"{net}\n")
+    with open(V2RAY_GEOIP_DIR / "iran-ip", "w", encoding="utf-8") as f:
+        for net in all_cidrs:
+            f.write(f"{net}\n")
+
     with open(TEXT_DIR / "iran-asn.txt", "w", encoding="utf-8") as f:
         for asn in sorted(asns):
             f.write(f"{asn}\n")
@@ -391,6 +390,10 @@ def main():
             f.write(f"{net}\n")
     save_surge_ip_list(all_cloud_cidrs, TEXT_DIR / "iran-cloud.list")
     save_singbox_ip_json(all_cloud_cidrs, TEXT_DIR / "iran-cloud.json")
+
+    with open(V2RAY_GEOIP_DIR / "iran-cloud", "w", encoding="utf-8") as f:
+        for net in all_cloud_cidrs:
+            f.write(f"{net}\n")
     print(f"[✓] iran-cloud: {len(all_cloud_cidrs)} cloud CIDRs")
 
     # --------------------------------------------------------------------------
@@ -434,6 +437,13 @@ def main():
     save_surge_domain_list(pruned_iran_domains, TEXT_DIR / "iran-domains.list")
     save_singbox_domain_json(pruned_iran_domains, TEXT_DIR / "iran-domains.json")
 
+    # ساخت تگ‌های V2Ray Geosite
+    write_v2ray_domain_tag(pruned_iran_domains, "iran-domains")
+    write_v2ray_domain_tag(pruned_iran_domains, "ir")
+    non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
+    write_v2ray_domain_tag(non_ir, "other")
+
+    # نسخه سبک
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
     for line in ir_lite_raw.splitlines():
@@ -446,6 +456,7 @@ def main():
             f.write(f"{d}\n")
     save_surge_domain_list(pruned_lite, TEXT_DIR / "iran-domains-lite.list")
     save_singbox_domain_json(pruned_lite, TEXT_DIR / "iran-domains-lite.json")
+    write_v2ray_domain_tag(pruned_lite, "iran-domains-lite")
     print(f"[✓] iran-domains: {len(pruned_iran_domains)} roots | lite: {len(pruned_lite)}")
 
     # --------------------------------------------------------------------------
@@ -472,6 +483,8 @@ def main():
             f.write(f"{d}\n")
     save_surge_domain_list(pruned_ads, TEXT_DIR / "iran-ads.list")
     save_singbox_domain_json(pruned_ads, TEXT_DIR / "iran-ads.json")
+    write_v2ray_domain_tag(pruned_ads, "iran-ads")
+    write_v2ray_domain_tag(pruned_ads, "ads")
     print(f"[✓] iran-ads: {len(pruned_ads)} domains")
 
     # --------------------------------------------------------------------------
@@ -506,6 +519,7 @@ def main():
             f.write(f"{d}\n")
     save_surge_domain_list(pruned_threats, TEXT_DIR / "iran-security.list")
     save_singbox_domain_json(pruned_threats, TEXT_DIR / "iran-security.json")
+    write_v2ray_domain_tag(pruned_threats, "iran-security")
 
     threat_ip_sources = [
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/phishing-ip.txt",
@@ -523,6 +537,10 @@ def main():
             f.write(f"{net}\n")
     save_surge_ip_list(all_threat_cidrs, TEXT_DIR / "iran-security-ip.list")
     save_singbox_ip_json(all_threat_cidrs, TEXT_DIR / "iran-security-ip.json")
+
+    with open(V2RAY_GEOIP_DIR / "iran-security-ip", "w", encoding="utf-8") as f:
+        for net in all_threat_cidrs:
+            f.write(f"{net}\n")
     print(f"[✓] iran-security: {len(pruned_threats)} domains | iran-security-ip: {len(all_threat_cidrs)} CIDRs")
 
     # --------------------------------------------------------------------------
@@ -547,6 +565,7 @@ def main():
             f.write(f"{d}\n")
     save_surge_domain_list(pruned_gambling, TEXT_DIR / "iran-gambling.list")
     save_singbox_domain_json(pruned_gambling, TEXT_DIR / "iran-gambling.json")
+    write_v2ray_domain_tag(pruned_gambling, "iran-gambling")
     print(f"[✓] iran-gambling: {len(pruned_gambling)} domains")
 
     # --------------------------------------------------------------------------
@@ -609,10 +628,9 @@ def main():
 
     save_singbox_apps_json(compiled_packages, WINDOWS_PROCESSES, TEXT_DIR / "iran-apps.json")
 
-    # Unified Classical (iran-unified.txt, .yaml & .list)
-    non_ir_domains = [d for d in pruned_iran_domains if not d.endswith(".ir")]
+    # Unified Classical
     classical_rules = ["GEOIP,ir", "DOMAIN-SUFFIX,ir"]
-    for d in sorted(non_ir_domains):
+    for d in sorted(non_ir):
         classical_rules.append(f"DOMAIN-SUFFIX,{d}")
     for n in collapsed_v4:
         classical_rules.append(f"IP-CIDR,{n}")
@@ -634,17 +652,43 @@ def main():
         for n in all_cidrs:
             f.write(f"IP-CIDR,{n},no-resolve\n")
 
+    # تولید فایل پیکربندی برای کامپایلر V2Ray GeoIP Go
+    geoip_config = {
+        "input": [
+            {
+                "type": "text",
+                "action": "add",
+                "args": {
+                    "inputDir": str(V2RAY_GEOIP_DIR.resolve())
+                }
+            }
+        ],
+        "output": [
+            {
+                "type": "v2rayGeoIPDat",
+                "action": "output",
+                "args": {
+                    "outputDir": str(MRS_DIR.resolve()),
+                    "outputName": "geoip.dat"
+                }
+            }
+        ]
+    }
+    with open(TEXT_DIR / "v2ray_geoip_config.json", "w", encoding="utf-8") as f:
+        json.dump(geoip_config, f, indent=2)
+
     print(f"[✓] iran-apps: {len(compiled_packages)} apps | iran-unified: {len(classical_rules)} rules")
 
     # --------------------------------------------------------------------------
-    # 8. SYNCHRONIZE & COMPILE (MIHOMO .MRS & SING-BOX .SRS)
+    # 8. SYNCHRONIZE & COMPILE
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
-    print("⚙️ DUAL COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
+    print("⚙️ COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
     print("=" * 78)
 
     for f in TEXT_DIR.glob("*.*"):
-        shutil.copy(f, MRS_DIR / f.name)
+        if f.is_file():
+            shutil.copy(f, MRS_DIR / f.name)
 
     mihomo_bin = shutil.which("mihomo") or shutil.which("mihomo.exe") or (BASE_DIR / "mihomo")
     if mihomo_bin and os.path.exists(mihomo_bin):
@@ -664,8 +708,6 @@ def main():
             if in_txt.exists():
                 success = compile_to_mrs(str(mihomo_bin), "ipcidr", in_txt, out_mrs)
                 print(f"  [{'✓' if success else '✗'}] Mihomo MRS: {target}.mrs ({out_mrs.stat().st_size/1024:.1f} KB)")
-    else:
-        print("[!] Mihomo core not found. Skipping .mrs binary generation.")
 
     singbox_bin = shutil.which("sing-box") or shutil.which("sing-box.exe") or (BASE_DIR / "sing-box")
     if singbox_bin and os.path.exists(singbox_bin):
@@ -680,12 +722,9 @@ def main():
             if in_json.exists():
                 success = compile_to_srs(str(singbox_bin), in_json, out_srs)
                 print(f"  [{'✓' if success else '✗'}] Sing-box SRS: {target}.srs ({out_srs.stat().st_size/1024:.1f} KB)")
-    else:
-        print("[!] Sing-box core not found. Skipping .srs binary generation.")
 
-    total_artifacts = len(list(MRS_DIR.iterdir()))
     print("\n" + "=" * 78)
-    print(f"🏁 PIPELINE COMPLETED: {total_artifacts} Universal Artifacts in ./output_mrs/")
+    print(f"🏁 PYTHON PIPELINE COMPLETED: Ready for V2Ray / Xray Protobuf Compilation.")
     print("=" * 78)
 
 if __name__ == "__main__":
