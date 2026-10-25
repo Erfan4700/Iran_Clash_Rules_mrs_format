@@ -44,7 +44,6 @@ TEXT_DIR = BASE_DIR / "output_text"
 MRS_DIR = BASE_DIR / "output_mrs"
 BASELINE_DIR = BASE_DIR / "data" / "baseline"
 
-# دایرکتوری‌های میانی برای کامپایلرهای رسمی V2Ray Protobuf
 V2RAY_GEOSITE_DIR = TEXT_DIR / "v2ray_geosite"
 V2RAY_GEOIP_DIR = TEXT_DIR / "v2ray_geoip" / "data"
 
@@ -355,7 +354,6 @@ def main():
     save_surge_ip_list(all_cidrs, TEXT_DIR / "iran-ip.list")
     save_singbox_ip_json(all_cidrs, TEXT_DIR / "iran-ip.json")
 
-    # ذخیره در ساختار V2Ray GeoIP برای کامپایلر go
     with open(V2RAY_GEOIP_DIR / "ir", "w", encoding="utf-8") as f:
         for net in all_cidrs:
             f.write(f"{net}\n")
@@ -437,13 +435,11 @@ def main():
     save_surge_domain_list(pruned_iran_domains, TEXT_DIR / "iran-domains.list")
     save_singbox_domain_json(pruned_iran_domains, TEXT_DIR / "iran-domains.json")
 
-    # ساخت تگ‌های V2Ray Geosite
     write_v2ray_domain_tag(pruned_iran_domains, "iran-domains")
     write_v2ray_domain_tag(pruned_iran_domains, "ir")
     non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
     write_v2ray_domain_tag(non_ir, "other")
 
-    # نسخه سبک
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
     for line in ir_lite_raw.splitlines():
@@ -652,7 +648,6 @@ def main():
         for n in all_cidrs:
             f.write(f"IP-CIDR,{n},no-resolve\n")
 
-    # تولید فایل پیکربندی برای کامپایلر V2Ray GeoIP Go
     geoip_config = {
         "input": [
             {
