@@ -90671,7 +90671,6 @@ phytoiran.ir
 pi-co.ir
 pi-lights.com
 pi-lights.ir
-pi.hole
 pi3d.ir
 pi85.ir
 pia.ir
