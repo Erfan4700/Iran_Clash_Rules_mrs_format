@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -24,10 +24,36 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Run Core Optimization Engine & Crawler
+      - name: Install & Setup Mihomo Core
         run: |
-          mkdir -p output_text
-          mkdir -p data/baseline
+          echo "Fetching latest official Mihomo release binary..."
+          MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
+
+          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+            echo "[!] Fallback: Retrying without version constraint..."
+            MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+              jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
+          fi
+
+          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+            echo "[X] FATAL ERROR: Unable to locate Mihomo binary release URL."
+            exit 1
+          fi
+
+          echo "Downloading from: $MIHOMO_URL"
+          curl -sSL "$MIHOMO_URL" -o mihomo.gz
+          gzip -d -f mihomo.gz
+          chmod +x mihomo
+          sudo mv mihomo /usr/local/bin/
+          mihomo -v
+
+      - name: Run Rule-Set Engine & MRS Compiler
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
           python build.py
 
       - name: Commit & Push Updated Baseline (Layer 2 Resilience)
@@ -36,96 +62,21 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/baseline/
           if git status --porcelain | grep -q 'data/baseline'; then
-            echo "[+] Baseline snapshot updated. Committing golden cache..."
-            git commit -m "chore(cache): update local golden baseline [skip ci]"
+            echo "[+] Baseline cache updated. Pushing golden snapshots to main..."
+            git commit -m "chore(baseline): update golden snapshots [skip ci]"
             git push origin main
           else
-            echo "[-] No baseline changes detected. Skipping cache commit."
+            echo "[-] Baseline is up-to-date. Skipping commit."
           fi
 
-      - name: Download & Setup Robust Mihomo Core
+      - name: Verify Generated Artifacts
         run: |
-          echo "Fetching latest official Mihomo release asset..."
-          # رجکس منعطف برای دریافت نسخه پایدار لینوکس 64 بیتی
-          MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
-            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
-
-          # فال‌بک در صورتی که ساختار نام‌گذاری تغییر کرده باشد
-          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
-            echo "[!] Fallback: Fetching generic amd64 tarball/binary..."
-            MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
-              jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
-          fi
-
-          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
-            echo "[X] FATAL ERROR: Failed to obtain Mihomo download URL from GitHub API."
-            exit 1
-          fi
-
-          echo "Downloading Mihomo from: $MIHOMO_URL"
-          curl -sSL "$MIHOMO_URL" -o mihomo.gz
-          gzip -d -f mihomo.gz
-          chmod +x mihomo
-          ./mihomo -v
-
-      - name: Compile and Package All Rules (MRS, TXT, YAML)
-        run: |
-          mkdir -p output_mrs
-
-          echo "=== 1. Validating Raw Generated Text Files ==="
+          echo "=== 1. Clean Text Lists (output_text) ==="
           ls -lh output_text/
-
-          # --- تابع کامپایل با اعتبارسنجی خروجی ---
-          compile_domain() {
-            local src="output_text/$1.txt"
-            local dst="output_mrs/$1.mrs"
-            if [ -s "$src" ]; then
-              echo "Converting [domain] $src -> $dst"
-              ./mihomo convert-ruleset domain text "$src" "$dst"
-            else
-              echo "[!] Skipping empty or missing domain file: $src"
-            fi
-          }
-
-          compile_ipcidr() {
-            local src="output_text/$1.txt"
-            local dst="output_mrs/$1.mrs"
-            if [ -s "$src" ]; then
-              echo "Converting [ipcidr] $src -> $dst"
-              ./mihomo convert-ruleset ipcidr text "$src" "$dst"
-            else
-              echo "[!] Skipping empty or missing ipcidr file: $src"
-            fi
-          }
-
-          echo "=== 2. Compiling Domain Rule-Sets to Binary MRS ==="
-          compile_domain "ir"
-          compile_domain "ir-lite"
-          compile_domain "ads"
-          compile_domain "phishing"
-          compile_domain "nsfw"
-          compile_domain "malware"
-
-          echo "=== 3. Compiling IP-CIDR Rule-Sets to Binary MRS ==="
-          compile_ipcidr "ircidr"
-          compile_ipcidr "phishing-ip"
-          compile_ipcidr "malware-ip"
-          compile_ipcidr "arvancloud"
-          compile_ipcidr "derakcloud"
-          compile_ipcidr "iranserver"
-          compile_ipcidr "parspack"
-
-          echo "=== 4. Synchronizing Text & YAML Lists (Universal Compatibility) ==="
-          # کپی فایل‌های متنی و یمل برای دسترسی کلاینت‌هایی که MRS پشتیبانی نمی‌کنند
-          cp -f output_text/*.txt output_mrs/
-          cp -f output_text/*.yaml output_mrs/ 2>/dev/null || true
-
-          echo "=== 5. Final Verified Release Artifacts ==="
+          echo "=== 2. Compiled MRS & Synced Lists (output_mrs) ==="
           ls -lh output_mrs/
 
-      - name: Deploy MRS & Text Artifacts to Release Branch
+      - name: Deploy All Artifacts to Release Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -142,11 +93,10 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
-          RELEASE_NOTES="Automated binary MRS & Clean Text build featuring RIPE CIDR aggregation, Subdomain Pruning, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and scraped domestic apps. Last synced: $NOW"
+          RELEASE_NOTES="Automated binary MRS & Clean Text build featuring RIPE CIDR aggregation, Subdomain Pruning, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and domestic apps. Last synced: $NOW"
 
-          # بررسی وجود ریلیز و مدیریت هوشمند تگ
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            echo "Updating existing rolling release assets..."
+            echo "Updating existing release..."
             gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
             gh release upload "$RELEASE_TAG" output_mrs/* --clobber
           else
