@@ -3,57 +3,46 @@ rule-providers:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-ads.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-ads.mrs"
     path: ./ruleset/iran-ads.mrs
     interval: 86400
 
-  iran_security:
+  iran_media:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-security.mrs"
-    path: ./ruleset/iran-security.mrs
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-media.mrs"
+    path: ./ruleset/iran-media.mrs
     interval: 86400
 
-  iran_gambling:
+  iran_banking:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-gambling.mrs"
-    path: ./ruleset/iran-gambling.mrs
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-banking.mrs"
+    path: ./ruleset/iran-banking.mrs
     interval: 86400
 
-  iran_apps:
+  iran_gaming:
     type: http
-    behavior: classical
-    format: text
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-apps.txt"
-    path: ./ruleset/iran-apps.txt
+    behavior: domain
+    format: mrs
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-gaming.mrs"
+    path: ./ruleset/iran-gaming.mrs
     interval: 86400
 
   iran_domains:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-domains.mrs"
+    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-domains.mrs"
     path: ./ruleset/iran-domains.mrs
-    interval: 86400
-
-  iran_ips:
-    type: http
-    behavior: ipcidr
-    format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/Iran_Clash_Rules_mrs_format@release/iran-ip.mrs"
-    path: ./ruleset/iran-ip.mrs
     interval: 86400
 
 rules:
   - RULE-SET,iran_ads,REJECT
-  - RULE-SET,iran_security,REJECT
-  - RULE-SET,iran_gambling,REJECT
-
-  - RULE-SET,iran_apps,DIRECT
+  - RULE-SET,iran_banking,DIRECT
+  - RULE-SET,iran_media,DIRECT
+  - RULE-SET,iran_gaming,DIRECT
   - RULE-SET,iran_domains,DIRECT
-  - RULE-SET,iran_ips,DIRECT,no-resolve
-
   - MATCH,PROXY
