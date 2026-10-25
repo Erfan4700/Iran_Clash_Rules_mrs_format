@@ -2,7 +2,6 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
-    # Runs twice a day (03:00 and 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -23,58 +22,110 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Run Core Optimization Engine & Crawler
-        run: python build.py
-
-      - name: Download Latest Mihomo Core
         run: |
-          echo "Fetching latest Mihomo release asset URL..."
+          mkdir -p output_text
+          mkdir -p data/baseline
+          python build.py
+
+      - name: Commit & Push Updated Baseline (Layer 2 Resilience)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/baseline/
+          if git status --porcelain | grep -q 'data/baseline'; then
+            echo "[+] Baseline snapshot updated. Committing golden cache..."
+            git commit -m "chore(cache): update local golden baseline [skip ci]"
+            git push origin main
+          else
+            echo "[-] No baseline changes detected. Skipping cache commit."
+          fi
+
+      - name: Download & Setup Robust Mihomo Core
+        run: |
+          echo "Fetching latest official Mihomo release asset..."
+          # رجکس منعطف برای دریافت نسخه پایدار لینوکس 64 بیتی
           MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
-            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-compatible-.*\\.gz$")) | .browser_download_url' | head -n 1)
+            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
+
+          # فال‌بک در صورتی که ساختار نام‌گذاری تغییر کرده باشد
+          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+            echo "[!] Fallback: Fetching generic amd64 tarball/binary..."
+            MIHOMO_URL=$(curl -sL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+              jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
+          fi
 
           if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
-            echo "[X] ERROR: Failed to obtain Mihomo download URL."
+            echo "[X] FATAL ERROR: Failed to obtain Mihomo download URL from GitHub API."
             exit 1
           fi
 
-          echo "Downloading from: $MIHOMO_URL"
-          curl -sL "$MIHOMO_URL" -o mihomo.gz
-          gzip -d mihomo.gz
+          echo "Downloading Mihomo from: $MIHOMO_URL"
+          curl -sSL "$MIHOMO_URL" -o mihomo.gz
+          gzip -d -f mihomo.gz
           chmod +x mihomo
           ./mihomo -v
 
-      - name: Compile Text Lists to Binary MRS
+      - name: Compile and Package All Rules (MRS, TXT, YAML)
         run: |
           mkdir -p output_mrs
 
-          echo "=== Verifying Generated Text Files ==="
+          echo "=== 1. Validating Raw Generated Text Files ==="
           ls -lh output_text/
 
-          echo "=== Converting ir.txt ==="
-          ./mihomo convert-ruleset domain text output_text/ir.txt output_mrs/ir.mrs
+          # --- تابع کامپایل با اعتبارسنجی خروجی ---
+          compile_domain() {
+            local src="output_text/$1.txt"
+            local dst="output_mrs/$1.mrs"
+            if [ -s "$src" ]; then
+              echo "Converting [domain] $src -> $dst"
+              ./mihomo convert-ruleset domain text "$src" "$dst"
+            else
+              echo "[!] Skipping empty or missing domain file: $src"
+            fi
+          }
 
-          echo "=== Converting ads.txt ==="
-          ./mihomo convert-ruleset domain text output_text/ads.txt output_mrs/ads.mrs
+          compile_ipcidr() {
+            local src="output_text/$1.txt"
+            local dst="output_mrs/$1.mrs"
+            if [ -s "$src" ]; then
+              echo "Converting [ipcidr] $src -> $dst"
+              ./mihomo convert-ruleset ipcidr text "$src" "$dst"
+            else
+              echo "[!] Skipping empty or missing ipcidr file: $src"
+            fi
+          }
 
-          echo "=== Converting phishing.txt ==="
-          ./mihomo convert-ruleset domain text output_text/phishing.txt output_mrs/phishing.mrs
+          echo "=== 2. Compiling Domain Rule-Sets to Binary MRS ==="
+          compile_domain "ir"
+          compile_domain "ir-lite"
+          compile_domain "ads"
+          compile_domain "phishing"
+          compile_domain "nsfw"
+          compile_domain "malware"
 
-          echo "=== Converting nsfw.txt ==="
-          ./mihomo convert-ruleset domain text output_text/nsfw.txt output_mrs/nsfw.mrs
+          echo "=== 3. Compiling IP-CIDR Rule-Sets to Binary MRS ==="
+          compile_ipcidr "ircidr"
+          compile_ipcidr "phishing-ip"
+          compile_ipcidr "malware-ip"
+          compile_ipcidr "arvancloud"
+          compile_ipcidr "derakcloud"
+          compile_ipcidr "iranserver"
+          compile_ipcidr "parspack"
 
-          echo "=== Converting ircidr.txt ==="
-          ./mihomo convert-ruleset ipcidr text output_text/ircidr.txt output_mrs/ircidr.mrs
+          echo "=== 4. Synchronizing Text & YAML Lists (Universal Compatibility) ==="
+          # کپی فایل‌های متنی و یمل برای دسترسی کلاینت‌هایی که MRS پشتیبانی نمی‌کنند
+          cp -f output_text/*.txt output_mrs/
+          cp -f output_text/*.yaml output_mrs/ 2>/dev/null || true
 
-          # Copy Classical text lists (ASN and Android Package Names)
-          cp output_text/irasn.txt output_mrs/irasn.txt
-          cp output_text/apps.txt output_mrs/apps.txt
-
-          echo "=== All MRS and Classical Artifacts Successfully Generated ==="
+          echo "=== 5. Final Verified Release Artifacts ==="
           ls -lh output_mrs/
 
-      - name: Deploy MRS Artifacts to Release Branch
+      - name: Deploy MRS & Text Artifacts to Release Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -82,6 +133,7 @@ jobs:
           publish_dir: ./output_mrs
           destination_dir: ./
           keep_files: false
+          force_orphan: true
 
       - name: Update Official Rolling Release
         env:
@@ -90,10 +142,11 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
-          RELEASE_NOTES="Automated binary MRS build featuring RIPE CIDR aggregation, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and thousands of crawled Android/Windows packages. Last synced: $NOW"
+          RELEASE_NOTES="Automated binary MRS & Clean Text build featuring RIPE CIDR aggregation, Subdomain Pruning, Zero-Trust Shaparak whitelist, domestic betting/gambling blocklist, and scraped domestic apps. Last synced: $NOW"
 
+          # بررسی وجود ریلیز و مدیریت هوشمند تگ
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            echo "Updating existing release..."
+            echo "Updating existing rolling release assets..."
             gh release edit "$RELEASE_TAG" --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
             gh release upload "$RELEASE_TAG" output_mrs/* --clobber
           else
@@ -101,16 +154,30 @@ jobs:
             gh release create "$RELEASE_TAG" output_mrs/* \
               --title "$RELEASE_TITLE" \
               --notes "$RELEASE_NOTES" \
-              --target main \
               --latest
           fi
 
       - name: Purge jsDelivr CDN Cache
         run: |
-          echo "Waiting 25 seconds for GitHub RAW storage propagation..."
-          sleep 25
-          for FILE in ir.mrs ads.mrs phishing.mrs nsfw.mrs ircidr.mrs irasn.txt apps.txt; do
-            echo "Purging CDN cache for $FILE..."
-            STATUS=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}" | jq -r .status)
-            echo "Purge status for $FILE: $STATUS"
+          echo "Waiting 20 seconds for GitHub RAW storage propagation..."
+          sleep 20
+
+          TARGET_FILES=(
+            "ir.mrs" "ir.txt"
+            "ir-lite.mrs" "ir-lite.txt"
+            "ads.mrs" "ads.txt"
+            "phishing.mrs" "phishing.txt"
+            "nsfw.mrs" "nsfw.txt"
+            "malware.mrs" "malware.txt"
+            "ircidr.mrs" "ircidr.txt"
+            "irasn.txt" "irasn.yaml"
+            "apps.txt" "apps.yaml"
+            "rules.txt" "rules.yaml"
+          )
+
+          for FILE in "${TARGET_FILES[@]}"; do
+            echo -n "Purging jsDelivr for $FILE: "
+            RESPONSE=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}")
+            STATUS=$(echo "$RESPONSE" | jq -r .status 2>/dev/null || echo "ok")
+            echo "$STATUS"
           done
