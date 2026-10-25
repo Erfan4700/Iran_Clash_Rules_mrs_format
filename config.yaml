@@ -1,5 +1,4 @@
 rule-providers:
-  # مسدودسازی‌ها (REJECT)
   iran_ads:
     type: http
     behavior: domain
@@ -24,7 +23,6 @@ rule-providers:
     path: ./ruleset/iran-gambling.mrs
     interval: 86400
 
-  # ترافیک مستقیم داخلی (DIRECT)
   iran_domains:
     type: http
     behavior: domain
