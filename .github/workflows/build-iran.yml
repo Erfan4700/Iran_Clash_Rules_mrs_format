@@ -42,7 +42,7 @@ jobs:
           sudo mv mihomo /usr/local/bin/
           mihomo -v
 
-      - name: Run Rule-Set Engine & MRS Compiler
+      - name: Run Pure Rule-Set Engine
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -63,7 +63,7 @@ jobs:
 
       - name: Verify Generated Artifacts
         run: |
-          echo "=== Modern Enterprise & Legacy Artifacts ==="
+          echo "=== Exactly 20 Pure Modern Rule-Set Artifacts ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -76,16 +76,15 @@ jobs:
           keep_files: false
           force_orphan: true
 
-      - name: Update Official Rolling Release (Clean Re-tagging)
+      - name: Update Official Rolling Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Iran Ruleset Engine (Updated: $NOW)"
-          RELEASE_NOTES="Automated binary MRS build featuring Modern Semantic Naming, Unified Security (Phishing + Malware), Aggregated Cloud CIDRs, RIPE Collapsing, and Android/Windows App Crawlers. Last synced: $NOW"
+          RELEASE_NOTES="Automated binary MRS build featuring 20 Pure Modern RuleSets: Unified Security, Aggregated Cloud CIDRs, RIPE Collapsing, and Android/Windows App Crawlers. Last synced: $NOW"
 
-          # ری‌ست کامل ریلیز و تگ جهت تضمین شکستن کش CDN
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
             gh release delete "$RELEASE_TAG" --yes --cleanup-tag
@@ -97,27 +96,29 @@ jobs:
           git tag "$RELEASE_TAG"
           git push origin "$RELEASE_TAG"
 
-          echo "[+] Creating clean, fresh rolling release..."
+          echo "[+] Creating clean rolling release..."
           gh release create "$RELEASE_TAG" output_mrs/* \
             --title "$RELEASE_TITLE" \
             --notes "$RELEASE_NOTES" \
             --latest
 
-      - name: Purge jsDelivr CDN Cache
+      - name: Purge jsDelivr CDN Cache (Modern Suite Only)
         run: |
           echo "Waiting 20 seconds for GitHub RAW storage propagation..."
           sleep 20
 
           TARGET_FILES=(
             "iran-domains.mrs" "iran-domains.txt"
+            "iran-domains-lite.mrs" "iran-domains-lite.txt"
             "iran-ip.mrs" "iran-ip.txt"
+            "iran-cloud.mrs" "iran-cloud.txt"
             "iran-ads.mrs" "iran-ads.txt"
             "iran-security.mrs" "iran-security.txt"
+            "iran-security-ip.mrs" "iran-security-ip.txt"
             "iran-gambling.mrs" "iran-gambling.txt"
-            "iran-cloud.mrs" "iran-cloud.txt"
             "iran-apps.txt" "iran-apps.yaml"
-            "iran-unified.yaml"
-            "ir.mrs" "ir.txt" "ircidr.mrs" "ircidr.txt"
+            "iran-asn.txt" "iran-asn.yaml"
+            "iran-unified.txt" "iran-unified.yaml"
           )
 
           for FILE in "${TARGET_FILES[@]}"; do
