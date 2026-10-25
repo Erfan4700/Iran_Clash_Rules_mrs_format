@@ -2,6 +2,7 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
+    # اجرا دو بار در روز (ساعت 03:00 و 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -22,7 +23,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install & Setup Mihomo Core
         run: |
