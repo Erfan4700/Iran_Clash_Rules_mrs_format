@@ -2,7 +2,6 @@ name: Iran Rules to MRS Automated Builder
 
 on:
   schedule:
-    # اجرا دو بار در روز (ساعت 03:00 و 15:00 UTC)
     - cron: '0 3,15 * * *'
   workflow_dispatch:
 
@@ -23,6 +22,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Setup Golang Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
 
       - name: Install Python Dependencies
         run: |
@@ -54,11 +59,6 @@ jobs:
             https://api.github.com/repos/SagerNet/sing-box/releases/latest | \
             jq -r '.assets[] | select(.name | test("sing-box-.*-linux-amd64\\.tar\\.gz$")) | .browser_download_url' | head -n 1)
 
-          if [ -z "$SINGBOX_URL" ] || [ "$SINGBOX_URL" = "null" ]; then
-            echo "[X] FATAL ERROR: Unable to locate Sing-box release URL."
-            exit 1
-          fi
-
           curl -sSL "$SINGBOX_URL" -o sing-box.tar.gz
           tar -xzf sing-box.tar.gz
           mv sing-box-*/sing-box ./sing-box
@@ -66,11 +66,29 @@ jobs:
           sudo mv sing-box /usr/local/bin/
           sing-box version
 
-      - name: Run Universal Multi-Platform Engine
+      - name: Run Core Optimization Engine (Mihomo, Sing-box, Surge)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python build.py
+
+      - name: Compile V2Ray / Xray Official Protobuf Binary DATs
+        run: |
+          echo "=== 1. Compiling geosite.dat & iran.dat with official v2fly DLC ==="
+          git clone --depth=1 https://github.com/v2fly/domain-list-community.git dlc-builder
+          cd dlc-builder
+          go run ./ --datapath=../output_text/v2ray_geosite --outputname=geosite.dat --outputdir=../output_mrs/
+          cd ..
+          cp output_mrs/geosite.dat output_mrs/iran.dat
+
+          echo "=== 2. Compiling geoip.dat with official v2fly GeoIP ==="
+          git clone --depth=1 https://github.com/v2fly/geoip.git geoip-builder
+          cd geoip-builder
+          go run ./ -c ../output_text/v2ray_geoip_config.json
+          cd ..
+
+          echo "=== 3. Cleaning Temporary Builder Cache ==="
+          rm -rf dlc-builder geoip-builder output_mrs/v2ray_geoip_config.json output_mrs/.tld_cache
 
       - name: Commit & Push Updated Baseline (Layer 2 Resilience)
         run: |
@@ -85,9 +103,9 @@ jobs:
             echo "[-] Baseline is up-to-date. Skipping commit."
           fi
 
-      - name: Verify Generated Artifacts
+      - name: Verify Universal Suite Artifacts
         run: |
-          echo "=== Universal Suite Artifacts (MRS, SRS, JSON, LIST, TXT) ==="
+          echo "=== ALL Universal Generated Artifacts (MRS, SRS, DAT, LIST, JSON, TXT) ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -107,7 +125,7 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
-          RELEASE_NOTES="Automated build featuring Universal Multi-Platform RuleSets: Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Classical Text/YAML. Last synced: $NOW"
+          RELEASE_NOTES="Automated build featuring Universal Multi-Platform RuleSets: V2Ray/Xray (.dat), Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Classical Text/YAML. Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
@@ -132,6 +150,7 @@ jobs:
           sleep 20
 
           TARGET_FILES=(
+            "geosite.dat" "geoip.dat" "iran.dat"
             "iran-domains.mrs" "iran-domains.srs" "iran-domains.txt" "iran-domains.json" "iran-domains.list"
             "iran-ip.mrs" "iran-ip.srs" "iran-ip.txt" "iran-ip.json" "iran-ip.list"
             "iran-ads.mrs" "iran-ads.srs" "iran-ads.txt" "iran-ads.json" "iran-ads.list"
