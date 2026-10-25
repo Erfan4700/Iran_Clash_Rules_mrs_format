@@ -2,12 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 ================================================================================
-Universal Multi-Platform Rule-Set Suite (Master Edition)
-Outputs:
-  - Mihomo / Clash Meta: .mrs (Binary) | .txt | .yaml
-  - Sing-box:            .srs (Binary) | .json (Source)
-  - Surge / Shadowrocket:.list
-  - V2Ray / Xray:        geosite.dat | geoip.dat | iran.dat
+Universal Multi-Platform & Modular Rule-Set Suite
+Repository: Erfan4700/iran-routing-rules
+Includes: Master Lists + Granular Modules (Media, Banking, Gov, Gaming, Download)
 ================================================================================
 """
 
@@ -247,7 +244,6 @@ def save_surge_ip_list(cidrs: List[str], out_path: Path):
             f.write(f"IP-CIDR,{c},no-resolve\n")
 
 def write_v2ray_domain_tag(domains: Set[str], tag_name: str):
-    """ذخیره دامنه‌ها در ساختار دایرکتوری کامپایلر V2Ray DLC"""
     tag_file = V2RAY_GEOSITE_DIR / tag_name
     with open(tag_file, "w", encoding="utf-8") as f:
         for d in sorted(domains):
@@ -281,13 +277,13 @@ def compile_to_srs(singbox_bin: Optional[str], json_file: Path, srs_file: Path) 
 # ==============================================================================
 def main():
     print("=" * 78)
-    print("🚀 UNIVERSAL MULTI-PLATFORM ENGINE (MIHOMO + SINGBOX + V2RAY + SURGE)")
+    print("🚀 IRAN ROUTING RULES: ENTERPRISE MODULAR & UNIVERSAL PIPELINE")
     print("=" * 78)
 
     # --------------------------------------------------------------------------
     # 1. IRAN IP & ASN
     # --------------------------------------------------------------------------
-    print("\n[+] 1/7: Processing Iranian IP-CIDRs & ASNs...")
+    print("\n[+] 1/8: Processing Iranian IP-CIDRs & ASNs...")
     ripe_raw = fetch_data([
         "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
         "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest"
@@ -374,7 +370,7 @@ def main():
     # --------------------------------------------------------------------------
     # 2. DOMESTIC CLOUDS MERGED
     # --------------------------------------------------------------------------
-    print("\n[+] 2/7: Aggregating Domestic Clouds (Arvan, Derak, ParsPack, IranServer)...")
+    print("\n[+] 2/8: Aggregating Domestic Clouds (Arvan, Derak, ParsPack, IranServer)...")
     cloud_sources = ["arvancloud", "derakcloud", "iranserver", "parspack"]
     raw_cloud_cidrs = []
     for cname in cloud_sources:
@@ -395,9 +391,9 @@ def main():
     print(f"[✓] iran-cloud: {len(all_cloud_cidrs)} cloud CIDRs")
 
     # --------------------------------------------------------------------------
-    # 3. IRANIAN DOMAINS WITH PSL PRUNING
+    # 3. MASTER IRANIAN DOMAINS (ALL-INCLUSIVE)
     # --------------------------------------------------------------------------
-    print("\n[+] 3/7: Processing Iranian Domains with Mozilla PSL Pruning...")
+    print("\n[+] 3/8: Processing Master Iranian Domains (PSL Pruning)...")
     raw_iran_domains = {
         "digikala.com", "torob.com", "divar.ir", "snapp.ir", "snapp.cab", "tapsi.cab",
         "neshan.org", "balad.ir", "bale.ai", "eitaa.com", "rubika.ir", "shaparak.ir",
@@ -453,12 +449,60 @@ def main():
     save_surge_domain_list(pruned_lite, TEXT_DIR / "iran-domains-lite.list")
     save_singbox_domain_json(pruned_lite, TEXT_DIR / "iran-domains-lite.json")
     write_v2ray_domain_tag(pruned_lite, "iran-domains-lite")
-    print(f"[✓] iran-domains: {len(pruned_iran_domains)} roots | lite: {len(pruned_lite)}")
+    print(f"[✓] Master Database: {len(pruned_iran_domains)} root domains preserved without loss.")
 
     # --------------------------------------------------------------------------
-    # 4. PERSIAN ADS & TRACKERS
+    # 4. GRANULAR MODULES (MEDIA, BANKING, GOV, GAMING, DOWNLOAD)
     # --------------------------------------------------------------------------
-    print("\n[+] 4/7: Compiling Persian Ads (Zero-Trust Protected)...")
+    print("\n[+] 4/8: Extracting High-Demand Granular Sub-Modules (>100 Rules Each)...")
+
+    MEDIA_PATTERNS = re.compile(r"(?:aparat|filimo|namava|filmnet|telewebion|gapfilm|cinematicket|tiwall|tamasha|namasha|antenn|lenz|mayaa|irib|seevid|ammarfilm|radio|video|music|tv|vod|stream)")
+    BANKING_PATTERNS = re.compile(r"(?:bank|shaparak|sadad|mellat|melli|tejarat|saderat|pasargad|sb24|blubank|sepah|refah|keshavarzi|maskan|postbank|zarinpal|payping|idpay|jibit|nextpay|vandar|zibal|nobitex|wallex|bitpin|ramzinex|abantether|exir|bourse|seham|tsetmc|codal|emofid|agah|fipiran)")
+    GOV_PATTERNS = re.compile(r"(?:\.gov\.ir$|\.jud\.ir$|\.police\.ir$|sana\.gov|adliran|my\.gov|mardom|tax\.gov|tamin|post\.ir|dolat\.ir|majlis\.ir|sabteahval|moi\.ir|medu\.ir)")
+    GAMING_PATTERNS = re.compile(r"(?:gameup|shecan|electro|radar\.game|parshub|asiagame|vmp|fivem|gamefa|vgmag|zoomg|bazicenter|baziato|csgo|samp|bazi|game)")
+    DOWNLOAD_PATTERNS = re.compile(r"(?:soft98|yasdl|downloadha|p30download|asandl|sarzamindownload|p30world|shahrsakhtafzar|zoomit|digiato|download|mirror|tarfandestan)")
+
+    media_domains = set()
+    banking_domains = set()
+    gov_domains = set()
+    gaming_domains = set()
+    download_domains = set()
+
+    for d in pruned_iran_domains:
+        if MEDIA_PATTERNS.search(d):
+            media_domains.add(d)
+        if BANKING_PATTERNS.search(d):
+            banking_domains.add(d)
+        if GOV_PATTERNS.search(d) or d.endswith(".gov.ir"):
+            gov_domains.add(d)
+        if GAMING_PATTERNS.search(d):
+            gaming_domains.add(d)
+        if DOWNLOAD_PATTERNS.search(d):
+            download_domains.add(d)
+
+    def export_sub_module(domains: Set[str], mod_name: str, min_thresh: int = 100):
+        pruned_sub = prune_subdomains(domains)
+        if len(pruned_sub) >= min_thresh:
+            with open(TEXT_DIR / f"{mod_name}.txt", "w", encoding="utf-8") as f:
+                for d in sorted(pruned_sub):
+                    f.write(f"{d}\n")
+            save_surge_domain_list(pruned_sub, TEXT_DIR / f"{mod_name}.list")
+            save_singbox_domain_json(pruned_sub, TEXT_DIR / f"{mod_name}.json")
+            write_v2ray_domain_tag(pruned_sub, mod_name)
+            print(f"  [✓] Module '{mod_name}': {len(pruned_sub)} unique domains.")
+            return True
+        return False
+
+    export_sub_module(media_domains, "iran-media", min_thresh=100)
+    export_sub_module(banking_domains, "iran-banking", min_thresh=100)
+    export_sub_module(gov_domains, "iran-gov", min_thresh=100)
+    export_sub_module(gaming_domains, "iran-gaming", min_thresh=80)
+    export_sub_module(download_domains, "iran-download", min_thresh=100)
+
+    # --------------------------------------------------------------------------
+    # 5. PERSIAN ADS & TRACKERS
+    # --------------------------------------------------------------------------
+    print("\n[+] 5/8: Compiling Persian Ads (Zero-Trust Protected)...")
     ads_sources = [
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt",
@@ -484,9 +528,9 @@ def main():
     print(f"[✓] iran-ads: {len(pruned_ads)} domains")
 
     # --------------------------------------------------------------------------
-    # 5. UNIFIED SECURITY (PHISHING + MALWARE)
+    # 6. UNIFIED SECURITY (PHISHING + MALWARE)
     # --------------------------------------------------------------------------
-    print("\n[+] 5/7: Compiling Unified Security (Targeted Threat-Intel)...")
+    print("\n[+] 6/8: Compiling Unified Security (Targeted Threat-Intel)...")
     DOMESTIC_THREAT_REGEX = re.compile(
         r"(?:^|[.-])(?:shaparak|sana[-_.]?gov|adliran|divar|sadad|"
         r"mellat|melli|tejarat|saderat|pasargad|blubank|keshavarzi|refah|maskan|"
@@ -540,9 +584,9 @@ def main():
     print(f"[✓] iran-security: {len(pruned_threats)} domains | iran-security-ip: {len(all_threat_cidrs)} CIDRs")
 
     # --------------------------------------------------------------------------
-    # 6. DOMESTIC GAMBLING & CASINOS
+    # 7. DOMESTIC GAMBLING & CASINOS
     # --------------------------------------------------------------------------
-    print("\n[+] 6/7: Compiling Domestic Gambling & Betting...")
+    print("\n[+] 7/8: Compiling Domestic Gambling & Betting...")
     gambling_sources = [
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt",
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/nsfw.txt"
@@ -565,9 +609,9 @@ def main():
     print(f"[✓] iran-gambling: {len(pruned_gambling)} domains")
 
     # --------------------------------------------------------------------------
-    # 7. DOMESTIC APPS & UNIFIED CLASSICAL
+    # 8. APPS & UNIFIED CLASSICAL
     # --------------------------------------------------------------------------
-    print("\n[+] 7/7: Compiling Applications & Unified Classical...")
+    print("\n[+] 8/8: Compiling Applications & Unified Classical...")
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -649,33 +693,14 @@ def main():
             f.write(f"IP-CIDR,{n},no-resolve\n")
 
     geoip_config = {
-        "input": [
-            {
-                "type": "text",
-                "action": "add",
-                "args": {
-                    "inputDir": str(V2RAY_GEOIP_DIR.resolve())
-                }
-            }
-        ],
-        "output": [
-            {
-                "type": "v2rayGeoIPDat",
-                "action": "output",
-                "args": {
-                    "outputDir": str(MRS_DIR.resolve()),
-                    "outputName": "geoip.dat"
-                }
-            }
-        ]
+        "input": [{"type": "text", "action": "add", "args": {"inputDir": str(V2RAY_GEOIP_DIR.resolve())}}],
+        "output": [{"type": "v2rayGeoIPDat", "action": "output", "args": {"outputDir": str(MRS_DIR.resolve()), "outputName": "geoip.dat"}}]
     }
     with open(TEXT_DIR / "v2ray_geoip_config.json", "w", encoding="utf-8") as f:
         json.dump(geoip_config, f, indent=2)
 
-    print(f"[✓] iran-apps: {len(compiled_packages)} apps | iran-unified: {len(classical_rules)} rules")
-
     # --------------------------------------------------------------------------
-    # 8. SYNCHRONIZE & COMPILE
+    # 9. DUAL COMPILATION (MIHOMO .MRS & SING-BOX .SRS)
     # --------------------------------------------------------------------------
     print("\n" + "=" * 78)
     print("⚙️ COMPILATION: MIHOMO (MRS) & SING-BOX (SRS)")
@@ -688,7 +713,10 @@ def main():
     mihomo_bin = shutil.which("mihomo") or shutil.which("mihomo.exe") or (BASE_DIR / "mihomo")
     if mihomo_bin and os.path.exists(mihomo_bin):
         print(f"[+] Mihomo Core Active: {mihomo_bin}")
-        domain_targets = ["iran-domains", "iran-domains-lite", "iran-ads", "iran-security", "iran-gambling"]
+        domain_targets = [
+            "iran-domains", "iran-domains-lite", "iran-ads", "iran-security", "iran-gambling",
+            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download"
+        ]
         for target in domain_targets:
             in_txt = TEXT_DIR / f"{target}.txt"
             out_mrs = MRS_DIR / f"{target}.mrs"
@@ -709,7 +737,8 @@ def main():
         print(f"[+] Sing-box Core Active: {singbox_bin}")
         srs_targets = [
             "iran-domains", "iran-domains-lite", "iran-ip", "iran-cloud",
-            "iran-ads", "iran-security", "iran-security-ip", "iran-gambling", "iran-apps"
+            "iran-ads", "iran-security", "iran-security-ip", "iran-gambling", "iran-apps",
+            "iran-media", "iran-banking", "iran-gov", "iran-gaming", "iran-download"
         ]
         for target in srs_targets:
             in_json = TEXT_DIR / f"{target}.json"
@@ -719,7 +748,7 @@ def main():
                 print(f"  [{'✓' if success else '✗'}] Sing-box SRS: {target}.srs ({out_srs.stat().st_size/1024:.1f} KB)")
 
     print("\n" + "=" * 78)
-    print(f"🏁 PYTHON PIPELINE COMPLETED: Ready for V2Ray / Xray Protobuf Compilation.")
+    print(f"🏁 PIPELINE COMPLETED: Ready for V2Ray Go Compiler.")
     print("=" * 78)
 
 if __name__ == "__main__":
