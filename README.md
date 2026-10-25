@@ -3,7 +3,7 @@
 # 🇮🇷 Iran Universal Routing & Cyber Defense Suite
 ### Automated Multi-Platform RuleSets for Mihomo, Sing-box, V2Ray/Xray & Shadowrocket
 
-[![Automated Build](https://img.shields.io/github/actions/workflow/status/Erfan4700/iran-routing-rules/build.yml?branch=main&label=Build%20Pipeline&style=flat-square&logo=github-actions&logoColor=white)](https://github.com/Erfan4700/iran-routing-rules/actions)
+[![Automated Build](https://img.shields.io/github/actions/workflow/status/Erfan4700/iran-routing-rules/build-iran.yml?branch=main&label=Build%20Pipeline&style=flat-square&logo=github-actions&logoColor=white)](https://github.com/Erfan4700/iran-routing-rules/actions)
 [![Release Branch](https://img.shields.io/badge/CDN-jsDelivr%20Active-orange?style=flat-square&logo=jsdelivr&logoColor=white)](https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/)
 [![Multi-Platform](https://img.shields.io/badge/Platform-Mihomo%20%7C%20Sing--box%20%7C%20V2Ray%20%7C%20Surge-blue?style=flat-square&logo=airplayvideo&logoColor=white)](#-multi-platform-matrix)
 [![Security Specs](https://img.shields.io/badge/Security-Phishing%20%7C%20AdBlock%20%7C%20Zero--Break-emerald?style=flat-square&logo=shield&logoColor=white)](#-cyber-threat-mitigation--whitelist-integrity)
