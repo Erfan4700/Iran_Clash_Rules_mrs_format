@@ -1,48 +1,169 @@
 rule-providers:
-  iran_ads:
+  # ==============================================================================
+  # 1. IRAN SECURITY & AD-BLOCKING (ZERO-TRUST)
+  # ==============================================================================
+  iran-all-security:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-ads.mrs"
-    path: ./ruleset/iran-ads.mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.mrs"
+    path: ./ruleset/iran-all-security.mrs
     interval: 86400
 
-  iran_banking:
+  iran-all-security-ip:
     type: http
-    behavior: domain
+    behavior: ipcidr
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-banking.mrs"
-    path: ./ruleset/iran-banking.mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.mrs"
+    path: ./ruleset/iran-all-security-ip.mrs
     interval: 86400
 
-  iran_media:
+  iran-all-ads:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-media.mrs"
-    path: ./ruleset/iran-media.mrs
-    interval: 86400
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.mrs"
+    path: ./ruleset/iran-all-ads.mrs
+    interval: 172800
 
-  iran_gaming:
+  # ==============================================================================
+  # 2. IRAN MODULAR DOMESTIC (ZERO OVERLAP - DISJOINT)
+  # ==============================================================================
+  iran-modular-banking:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-gaming.mrs"
-    path: ./ruleset/iran-gaming.mrs
-    interval: 86400
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.mrs"
+    path: ./ruleset/iran-modular-banking.mrs
+    interval: 172800
 
-  iran_other:
+  iran-modular-gov:
     type: http
     behavior: domain
     format: mrs
-    url: "https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/iran-other.mrs"
-    path: ./ruleset/iran-other.mrs
-    interval: 86400
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.mrs"
+    path: ./ruleset/iran-modular-gov.mrs
+    interval: 172800
+
+  iran-modular-media:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.mrs"
+    path: ./ruleset/iran-modular-media.mrs
+    interval: 172800
+
+  iran-modular-gaming:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.mrs"
+    path: ./ruleset/iran-modular-gaming.mrs
+    interval: 172800
+
+  iran-modular-download:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.mrs"
+    path: ./ruleset/iran-modular-download.mrs
+    interval: 172800
+
+  iran-modular-other:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.mrs"
+    path: ./ruleset/iran-modular-other.mrs
+    interval: 172800
+
+  iran-modular-cloud:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.mrs"
+    path: ./ruleset/iran-modular-cloud.mrs
+    interval: 172800
+
+  iran-modular-isp:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.mrs"
+    path: ./ruleset/iran-modular-isp.mrs
+    interval: 172800
+
+  iran-all-apps:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.txt"
+    path: ./ruleset/iran-all-apps.txt
+    interval: 172800
+
+  iran-asn:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.txt"
+    path: ./ruleset/iran-asn.txt
+    interval: 172800
 
 rules:
-  - RULE-SET,iran_ads,REJECT
-  - RULE-SET,iran_banking,DIRECT
-  - RULE-SET,iran_media,DIRECT
-  - RULE-SET,iran_gaming,DIRECT
-  - RULE-SET,iran_other,DIRECT
+  # --------------------------------------------------------------------------
+  # 1. LOCAL NETWORK & PRIVATE IP BYPASS (DIRECT)
+  # --------------------------------------------------------------------------
+  - DST-PORT,7275,DIRECT
+  - GEOIP,private,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR,255.255.255.255/32,DIRECT,no-resolve
+
+  # Torrents
+  - DST-PORT,6881-6889,DIRECT
+  - DST-PORT,51413,DIRECT
+
+  # --------------------------------------------------------------------------
+  # 2. QUIC PROTOCOL BLOCKING (Prevents UDP Throttling by ISP)
+  # --------------------------------------------------------------------------
+  - AND,((NETWORK,UDP),(DST-PORT,443)),REJECT
+
+  # --------------------------------------------------------------------------
+  # 3. DOMESTIC SECURITY & PHISHING REJECTION
+  # --------------------------------------------------------------------------
+  - RULE-SET,iran-all-security,REJECT
+  - RULE-SET,iran-all-security-ip,REJECT,no-resolve
+
+  # --------------------------------------------------------------------------
+  # 4. DOMESTIC AD-BLOCKING
+  # --------------------------------------------------------------------------
+  - RULE-SET,iran-all-ads,REJECT
+
+  # --------------------------------------------------------------------------
+  # 5. ZERO-DELAY DIRECT DOMAINS (.IR)
+  # --------------------------------------------------------------------------
+  - DOMAIN-SUFFIX,ir,DIRECT
+
+  # --------------------------------------------------------------------------
+  # 6. IRAN MODULAR DIRECT ROUTING (Full Coverage)
+  # --------------------------------------------------------------------------
+  - RULE-SET,iran-all-apps,DIRECT,no-resolve
+  - RULE-SET,iran-modular-banking,DIRECT
+  - RULE-SET,iran-modular-gov,DIRECT
+  - RULE-SET,iran-modular-media,DIRECT
+  - RULE-SET,iran-modular-gaming,DIRECT
+  - RULE-SET,iran-modular-download,DIRECT
+  - RULE-SET,iran-modular-other,DIRECT
+  - RULE-SET,iran-modular-cloud,DIRECT,no-resolve
+  - RULE-SET,iran-modular-isp,DIRECT,no-resolve
+  - RULE-SET,iran-asn,DIRECT,no-resolve
+
+  # --------------------------------------------------------------------------
+  # 7. FINAL FALLBACK CATCH-ALL
+  # --------------------------------------------------------------------------
   - MATCH,PROXY
