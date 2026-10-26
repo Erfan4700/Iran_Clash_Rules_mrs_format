@@ -7,25 +7,36 @@ const ENABLE_QUIC_BLOCK = true;
 
 // "light" | "normal" | "pro" | "proplus" | "ultimate"
 const HAGEZI_TIER = "proplus";
-const ENABLE_HAGEZI_TIF = false;       
-const ENABLE_PORN_FILTER = true;       
-const ENABLE_GAMBLING_FILTER = true;   
+const ENABLE_HAGEZI_TIF = true;        // HaGeZi Threat Intelligence Feeds (Full Operational)
+const ENABLE_NATIVE_TRACKERS = true;   // Apple & Windows Telemetry Trackers
 
-const ENABLE_NATIVE_TRACKERS = false;
+const ENABLE_IRAN_ADS = true;          // Iran Domestic Ads & Trackers
+const ENABLE_IRAN_SECURITY = true;     // Iran Phishing, Fake Gateways & Malware
+const ENABLE_GAMBLING_FILTER = true;   // Iran Gambling & Betting Filter
+const ENABLE_IRAN_DIRECT = true;       // Master Switch for Domestic Direct Routing
 
-const ENABLE_IRAN_ADS = true;          
-const ENABLE_IRAN_SECURITY = true;     
-const ENABLE_IRAN_DIRECT = true;       
+// Modular Iran Sub-Categories (All Disjoint / Zero Overlap)
+const ENABLE_MODULAR_BANKING = true;
+const ENABLE_MODULAR_GOV = true;
+const ENABLE_MODULAR_MEDIA = true;
+const ENABLE_MODULAR_GAMING = true;
+const ENABLE_MODULAR_DOWNLOAD = true;
+const ENABLE_MODULAR_OTHER = true;
+const ENABLE_MODULAR_ISP = true;
+const ENABLE_MODULAR_CLOUD = true;
+const ENABLE_MODULAR_APPS = true;
 
 const SECURITY_INTERVAL = 24 * 3600;   
 const STANDARD_INTERVAL = 48 * 3600;   
-const GEO_UPDATE_HOURS = 72;           
 
 // ==============================================================================
-// 1. DATASETS, REGEX & CONSTANTS
+// 1. DATASETS, REGEX & CONSTANTS (STRICTLY 2 REPOSITORIES)
 // ==============================================================================
 
-const CHOCOLATE_BASE_URL = "https://cdn.jsdelivr.net/gh/Chocolate4U/Iran-clash-rules@release/";
+// 1. Official Repository: Erfan4700/iran-routing-rules
+const IRAN_RULES_BASE_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/";
+
+// 2. Official Global Adblock: MiHomoer/MiHomo-Hagezi
 const HAGEZI_MRS_URL = "https://cdn.jsdelivr.net/gh/MiHomoer/MiHomo-Hagezi@release/";
 
 const HAGEZI_TIERS_MAP = Object.freeze({
@@ -91,11 +102,6 @@ const DOH_ENDPOINTS = Object.freeze([
   "https://9.9.9.9/dns-query"
 ]);
 
-const FROZEN_GEOX_URL = Object.freeze({
-  geoip: `${CHOCOLATE_BASE_URL}geoip.metadb`,
-  mmdb: `${CHOCOLATE_BASE_URL}geoip.metadb`
-});
-
 // ==============================================================================
 // 2. HELPER FUNCTIONS
 // ==============================================================================
@@ -125,12 +131,8 @@ function resolvePrimaryProxyGroup(groups) {
     if (DIRECT_KEYWORD_REGEX.test(name) || name.toLowerCase() === "reject") continue;
 
     const isMatch = PROXY_KEYWORD_REGEX.test(name);
-    if (type === "select" && isMatch) {
-      return name;
-    }
-    if (!matchedSelectGroup && isMatch) {
-      matchedSelectGroup = name;
-    }
+    if (type === "select" && isMatch) return name;
+    if (!matchedSelectGroup && isMatch) matchedSelectGroup = name;
     if (!fallbackAutoGroup && (type === "url-test" || type === "fallback" || type === "load-balance")) {
       fallbackAutoGroup = name;
     }
@@ -161,10 +163,9 @@ function main(config, profileName) {
     }
   }
 
+  // Pure Rule-Provider Mode: We bypass heavy GeoIP/GeoSite databases to save RAM and Network bandwidth
   config["geodata-mode"] = false;
-  config["geo-auto-update"] = true;
-  config["geo-update-interval"] = GEO_UPDATE_HOURS;
-  config["geox-url"] = FROZEN_GEOX_URL;
+  config["geo-auto-update"] = false;
 
   config["keep-alive-idle"] = 600;
   config["keep-alive-interval"] = 15;
@@ -216,9 +217,12 @@ function main(config, profileName) {
   dns["proxy-server-nameserver"] = UNPOISONED_PROXY_RESOLVERS;
   dns["direct-nameserver"] = PURE_DOMESTIC_RESOLVERS;
 
+  // Ultra-Fast Fake-IP Filter using Modular Sets & Core Manual Domains
   dns["fake-ip-filter"] = [
     "+.ir",
-    "rule-set:ir",
+    "rule-set:iran-modular-banking",
+    "rule-set:iran-modular-gov",
+    "rule-set:iran-modular-media",
     ...MANUAL_WILDCARDS,
     "+.lan", "+.local", "+.home.arpa",
     "captive.apple.com", "+.connectivitycheck.gstatic.com",
@@ -232,26 +236,33 @@ function main(config, profileName) {
 
   dns.nameserver = DOH_ENDPOINTS.map(url => `${url}#${defaultProxyGroup}`);
 
-  const nsPolicy = MANUAL_DOMAINS.reduce((acc, domain) => {
-    acc[`+.${domain}`] = PURE_DOMESTIC_RESOLVERS;
-    return acc;
-  }, {
+  const nsPolicy = {
     "+.ir": PURE_DOMESTIC_RESOLVERS,
-    "rule-set:ir": PURE_DOMESTIC_RESOLVERS,
+    "rule-set:iran-modular-banking": PURE_DOMESTIC_RESOLVERS,
+    "rule-set:iran-modular-gov": PURE_DOMESTIC_RESOLVERS,
+    "rule-set:iran-modular-media": PURE_DOMESTIC_RESOLVERS,
     "supl.google.com": PURE_DOMESTIC_RESOLVERS,
     "+.supl.google.com": PURE_DOMESTIC_RESOLVERS
-  });
-  Object.assign((dns["nameserver-policy"] ??= {}), nsPolicy);
+  };
+  for (let i = 0; i < MANUAL_DOMAINS.length; i++) {
+    nsPolicy[`+.${MANUAL_DOMAINS[i]}`] = PURE_DOMESTIC_RESOLVERS;
+  }
+  dns["nameserver-policy"] = Object.assign(dns["nameserver-policy"] ?? {}, nsPolicy);
 
+  // ============================================================================
+  // RULE-PROVIDERS DEFINITION (CLEAN HYBRID ARCHITECTURE)
+  // ============================================================================
   const providers = {};
 
+  // 1. Global Adblock / Trackers (Hagezi)
   providers["hagezi-main"] = makeProvider(
     `hagezi-${HAGEZI_TIER}`, "domain", "mrs",
     `${HAGEZI_MRS_URL}${SELECTED_HAGEZI_NAME}.mrs`, STANDARD_INTERVAL
   );
 
-  if (ENABLE_PORN_FILTER) {
-    providers["nsfw"] = makeProvider("nsfw", "domain", "mrs", `${CHOCOLATE_BASE_URL}nsfw.mrs`, STANDARD_INTERVAL);
+  // Fully Operational HaGeZi Threat Intelligence Feeds (TIF)
+  if (ENABLE_HAGEZI_TIF) {
+    providers["hagezi-tif"] = makeProvider("HageziTIF", "domain", "mrs", `${HAGEZI_MRS_URL}HageziTIF.mrs`, SECURITY_INTERVAL);
   }
 
   if (ENABLE_NATIVE_TRACKERS) {
@@ -259,26 +270,62 @@ function main(config, profileName) {
     providers["hagezi-windows"] = makeProvider("HageziWindows", "domain", "mrs", `${HAGEZI_MRS_URL}HageziWindows.mrs`, STANDARD_INTERVAL);
   }
 
+  // 2. Iran Domestic Ads (Your Repo)
   if (ENABLE_IRAN_ADS) {
-    providers["ads-ir"] = makeProvider("ads-ir", "domain", "mrs", `${CHOCOLATE_BASE_URL}ads.mrs`, STANDARD_INTERVAL);
+    providers["iran-all-ads"] = makeProvider("iran-all-ads", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ads.mrs`, STANDARD_INTERVAL);
   }
 
+  // 3. Iran Domestic Security: Phishing & Malware (Your Repo)
   if (ENABLE_IRAN_SECURITY) {
-    providers["malware-ip"] = makeProvider("malware-ip", "ipcidr", "mrs", `${CHOCOLATE_BASE_URL}malware-ip.mrs`, SECURITY_INTERVAL);
-    providers["phishing-ip"] = makeProvider("phishing-ip", "ipcidr", "mrs", `${CHOCOLATE_BASE_URL}phishing-ip.mrs`, SECURITY_INTERVAL);
+    providers["iran-all-security"] = makeProvider("iran-all-security", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security.mrs`, SECURITY_INTERVAL);
+    providers["iran-all-security-ip"] = makeProvider("iran-all-security-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security-ip.mrs`, SECURITY_INTERVAL);
   }
 
+  // 4. Iran Gambling Filter (Your Repo)
+  if (ENABLE_GAMBLING_FILTER) {
+    providers["iran-modular-gambling"] = makeProvider("iran-modular-gambling", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gambling.mrs`, STANDARD_INTERVAL);
+  }
+
+  // 5. Iran Modular Sub-Categories (Your Repo)
   if (ENABLE_IRAN_DIRECT) {
-    providers["ir"] = makeProvider("ir", "domain", "mrs", `${CHOCOLATE_BASE_URL}ir.mrs`, STANDARD_INTERVAL);
-    providers["ircidr"] = makeProvider("ircidr", "ipcidr", "mrs", `${CHOCOLATE_BASE_URL}ircidr.mrs`, STANDARD_INTERVAL);
-    providers["irasn"] = makeProvider("irasn", "classical", "text", `${CHOCOLATE_BASE_URL}irasn.txt`, STANDARD_INTERVAL);
-    providers["apps"] = makeProvider("apps", "classical", "text", `${CHOCOLATE_BASE_URL}apps.txt`, STANDARD_INTERVAL);
+    if (ENABLE_MODULAR_BANKING) {
+      providers["iran-modular-banking"] = makeProvider("iran-modular-banking", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-banking.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_GOV) {
+      providers["iran-modular-gov"] = makeProvider("iran-modular-gov", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gov.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_MEDIA) {
+      providers["iran-modular-media"] = makeProvider("iran-modular-media", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-media.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_GAMING) {
+      providers["iran-modular-gaming"] = makeProvider("iran-modular-gaming", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gaming.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_DOWNLOAD) {
+      providers["iran-modular-download"] = makeProvider("iran-modular-download", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-download.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_OTHER) {
+      providers["iran-modular-other"] = makeProvider("iran-modular-other", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-other.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_ISP) {
+      providers["iran-modular-isp"] = makeProvider("iran-modular-isp", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-isp.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_CLOUD) {
+      providers["iran-modular-cloud"] = makeProvider("iran-modular-cloud", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-cloud.mrs`, STANDARD_INTERVAL);
+    }
+    if (ENABLE_MODULAR_APPS) {
+      providers["iran-all-apps"] = makeProvider("iran-all-apps", "classical", "text", `${IRAN_RULES_BASE_URL}iran-all-apps.txt`, STANDARD_INTERVAL);
+    }
+    providers["iran-asn"] = makeProvider("iran-asn", "classical", "text", `${IRAN_RULES_BASE_URL}iran-asn.txt`, STANDARD_INTERVAL);
   }
 
-  Object.assign((config["rule-providers"] ??= {}), providers);
+  config["rule-providers"] = Object.assign(config["rule-providers"] ?? {}, providers);
 
+  // ============================================================================
+  // RULES EVALUATION PIPELINE (TOP-TO-BOTTOM OPTIMIZED ORDER)
+  // ============================================================================
   const ruleSet = new Set();
 
+  // 1. Essential Local Network & Private IP Bypass (Direct)
   ruleSet.add("DST-PORT,7275,DIRECT");
   ruleSet.add("GEOIP,private,DIRECT,no-resolve");
   ruleSet.add("IP-CIDR,127.0.0.0/8,DIRECT,no-resolve");
@@ -290,43 +337,60 @@ function main(config, profileName) {
   ruleSet.add("IP-CIDR,224.0.0.0/4,DIRECT,no-resolve");
   ruleSet.add("IP-CIDR,255.255.255.255/32,DIRECT,no-resolve");
 
+  // Torrent Clients
   ruleSet.add("DST-PORT,6881-6889,DIRECT");
   ruleSet.add("DST-PORT,51413,DIRECT");
 
-  ruleSet.add("RULE-SET,hagezi-main,REJECT");
-  if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,ads-ir,REJECT");
-  if (ENABLE_PORN_FILTER) ruleSet.add("RULE-SET,nsfw,REJECT");
+  // 2. High-Priority QUIC Blocking (Immediate Fallback to TLS/TCP)
+  if (ENABLE_QUIC_BLOCK) {
+    ruleSet.add("AND,((NETWORK,UDP),(DST-PORT,443)),REJECT");
+  }
+
+  // 3. Security, Phishing, Malware & Threat Intel (Zero-Trust Top Priority)
+  if (ENABLE_HAGEZI_TIF) {
+    ruleSet.add("RULE-SET,hagezi-tif,REJECT");
+  }
 
   if (ENABLE_IRAN_SECURITY) {
-    ruleSet.add("RULE-SET,malware-ip,REJECT,no-resolve");
-    ruleSet.add("RULE-SET,phishing-ip,REJECT,no-resolve");
+    ruleSet.add("RULE-SET,iran-all-security,REJECT");
+    ruleSet.add("RULE-SET,iran-all-security-ip,REJECT,no-resolve");
   }
+
+  // 4. Ads & Trackers Blocking
+  ruleSet.add("RULE-SET,hagezi-main,REJECT");
+  if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-all-ads,REJECT");
+  if (ENABLE_GAMBLING_FILTER) ruleSet.add("RULE-SET,iran-modular-gambling,REJECT");
 
   if (ENABLE_NATIVE_TRACKERS) {
     ruleSet.add("RULE-SET,hagezi-apple,REJECT");
     ruleSet.add("RULE-SET,hagezi-windows,REJECT");
   }
 
+  // 5. Special Domain Overrides
+  ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
+  ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
+
+  // 6. Manual Zero-Delay Domestic Whitelist
   for (let i = 0; i < MANUAL_DOMAINS.length; i++) {
     ruleSet.add(`DOMAIN-SUFFIX,${MANUAL_DOMAINS[i]},DIRECT`);
   }
   ruleSet.add("DOMAIN-SUFFIX,ir,DIRECT");
 
+  // 7. Iran Modular Direct Routing (Zero-Loss / Zero-Overlap)
   if (ENABLE_IRAN_DIRECT) {
-    ruleSet.add("RULE-SET,apps,DIRECT,no-resolve");
-    ruleSet.add("RULE-SET,ir,DIRECT");
-    ruleSet.add("RULE-SET,ircidr,DIRECT,no-resolve");
-    ruleSet.add("RULE-SET,irasn,DIRECT,no-resolve");
-    ruleSet.add("GEOIP,IR,DIRECT,no-resolve");
+    if (ENABLE_MODULAR_APPS) ruleSet.add("RULE-SET,iran-all-apps,DIRECT,no-resolve");
+    if (ENABLE_MODULAR_BANKING) ruleSet.add("RULE-SET,iran-modular-banking,DIRECT");
+    if (ENABLE_MODULAR_GOV) ruleSet.add("RULE-SET,iran-modular-gov,DIRECT");
+    if (ENABLE_MODULAR_MEDIA) ruleSet.add("RULE-SET,iran-modular-media,DIRECT");
+    if (ENABLE_MODULAR_GAMING) ruleSet.add("RULE-SET,iran-modular-gaming,DIRECT");
+    if (ENABLE_MODULAR_DOWNLOAD) ruleSet.add("RULE-SET,iran-modular-download,DIRECT");
+    if (ENABLE_MODULAR_OTHER) ruleSet.add("RULE-SET,iran-modular-other,DIRECT");
+    if (ENABLE_MODULAR_CLOUD) ruleSet.add("RULE-SET,iran-modular-cloud,DIRECT,no-resolve");
+    if (ENABLE_MODULAR_ISP) ruleSet.add("RULE-SET,iran-modular-isp,DIRECT,no-resolve");
+    ruleSet.add("RULE-SET,iran-asn,DIRECT,no-resolve");
   }
 
-  if (ENABLE_QUIC_BLOCK) {
-    ruleSet.add("AND,((NETWORK,UDP),(DST-PORT,443)),REJECT");
-  }
-
-  ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
-  ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
-
+  // 8. Integration of Existing Profile Rules (Sanitized)
   const rawRules = config.rules;
   let capturedMatchRule = null;
 
@@ -352,8 +416,9 @@ function main(config, profileName) {
     }
   }
 
+  // 9. Final Fallback Catch-All
   ruleSet.add(capturedMatchRule ?? `MATCH,${defaultProxyGroup}`);
   config.rules = Array.from(ruleSet);
 
   return config;
-  }
+}
