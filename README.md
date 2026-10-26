@@ -12,7 +12,7 @@
 
 An industrial-grade routing engine and cyber defense framework compiled natively into optimized binary and classical text rule-sets across **Mihomo (`.mrs`)**, **Sing-box (`.srs`)**, **V2Ray/Xray (`.dat`)**, and **Surge/Shadowrocket (`.list`)**. Powered by prefix-level CIDR mathematical supernetting, Mozilla PSL root pruning, strictly disjoint modular categorization, and ready-to-use **Macro** and **Modular** Clash Verge JavaScript processors.
 
-[Architecture](#-macro-vs-modular-architectural-taxonomy) • [Merge Scripts](#-clash-verge-merge-scripts-javascript-runtime) • [Catalog & Endpoints](#-ruleset-catalog--distribution-endpoints) • [Client Setup](#-client--platform-integration) • [Threat Mitigation](#-cyber-threat-mitigation--whitelist-integrity) • [راهنمای جامع فارسی](#-راهنمای-جامع-به-زبان-فارسی)
+[Architecture](#-macro-vs-modular-architectural-taxonomy) • [Merge Scripts](#-clash-verge-merge-scripts-javascript-runtime) • [Catalog & Endpoints](#-ruleset-catalog--distribution-endpoints) • [Client Setup](#-client--platform-integration) • [Telemetry Sources](#-telemetry-sources--upstream-feeds) • [راهنمای جامع فارسی](#-راهنمای-جامع-به-زبان-فارسی)
 
 </div>
 
@@ -55,7 +55,7 @@ Users and network administrators can select between two architectural designs ta
 │ • Designed for precision traffic control, granular policy routing, and zero memory redundancy.         │
 │ • iran-modular-banking   : Certified banking portals, Shaparak infrastructure, and crypto exchanges.  │
 │ • iran-modular-gov       : State, judiciary (Sana/Adliran), tax, and municipal services.               │
-│ • iran-modular-media     : Video on demand, Aparat, Filimo, Telewebion, and national CDN broadacsters. │
+│ • iran-modular-media     : Video on demand, Aparat, Filimo, Telewebion, and national CDN broadcasters. │
 │ • iran-modular-gaming    : Domestic game matchmaking, Radar Game subnets, and low-latency servers.     │
 │ • iran-modular-download  : High-throughput software mirrors, Linux repositories, and Soft98.          │
 │ • iran-modular-cloud     : Domestic cloud datacenters (ArvanCloud, Derak, ParsPack) IP-CIDRs.         │
@@ -63,80 +63,131 @@ Users and network administrators can select between two architectural designs ta
 │ • iran-modular-gambling  : Domestic online casinos, betting networks, and illegal payment scripts.    │
 │ • iran-modular-other     : The mathematical remainder set (E-commerce, Snapp, Digikala, News).        │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
 
-### The Disjoint Mathematical Guarantee:
-Specialized sub-categories are strictly isolated using automated set difference operations:
-$$\text{iran-modular-other} = \text{iran-all-domains} \setminus (\text{banking} \cup \text{gov} \cup \text{media} \cup \text{gaming} \cup \text{download})$$
+The Disjoint Mathematical Guarantee:
 
-> **Zero Log Pollution & Zero RAM Waste:** No domain existing in `banking`, `gov`, `media`, `gaming`, or `download` is replicated in `iran-modular-other`. This completely prevents duplicate memory allocation inside the client radix tree.
+Specialized sub-categories are strictly isolated using automated set difference
+operations:
+\text{iran-modular-other} = \text{iran-all-domains} \setminus (\text{banking} \cup \text{gov} \cup \text{media} \cup \text{gaming} \cup \text{download})
 
----
+Zero Log Pollution & Zero RAM Waste: No domain existing in banking, gov, media,
+gaming, or download is replicated in iran-modular-other. This completely
+prevents duplicate memory allocation inside the client radix tree.
 
-## ⚡ Clash Verge Merge Scripts (JavaScript Runtime)
+⚡ Clash Verge Merge Scripts (JavaScript Runtime)
 
-This repository includes two production-hardened JavaScript merge processors in the root directory for **Clash Verge Rev**, **Mihomo Party**, and **FlClash**. Both scripts feature native integration with the **[HaGeZi MRS Blocklists](https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format)**, automated domestic DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak suppression.
+This repository includes two production-hardened JavaScript merge processors in
+the root directory for Clash Verge Rev, Mihomo Party, and FlClash. Both scripts
+feature native integration with the HaGeZi MRS Blocklists, automated domestic
+DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak
+suppression.
 
-```text
 ├── clash-verge-merge-macro.js    # For users who prefer a single macro switch for all Iran traffic
 └── clash-verge-merge-modular.js  # For users demanding per-category toggles (Banking, Media, Gaming, etc.)
-```
 
-### Features Shared by Both Scripts:
-1. **Dynamic HaGeZi Integration:** Supports all HaGeZi tiers (`light`, `normal`, `pro`, `promini`, `proplus`, `proplusmini`, `ultimate`, `ultimatemini`) plus modular add-ons (NSFW, Gambling, TIF IP/Mini, and Device Trackers: Apple, Samsung, Xiaomi, Microsoft, Amazon, LG, Roku, and TikTok).
-2. **Deterministic Domestic DNS Isolation:** Injects domestic DoH and unpoisoned bootstrap resolvers (`193.186.32.32`, `223.5.5.5`, `119.29.29.29`) with dedicated `nameserver-policy` and `fake-ip-filter` entries to eliminate DNS leaks.
-3. **Automated Proxy Group Resolution:** Dynamically traverses configuration proxy groups and attaches the primary egress group without hardcoded names.
-4. **QUIC Censorship Bypass:** Enforces UDP 443 rejection (`AND,((NETWORK,UDP),(DST-PORT,443)),REJECT`) to force instantaneous TCP fallback, preventing ISP UDP-throttling.
+Features Shared by Both Scripts:
 
----
+1.  Dynamic HaGeZi Integration: Supports all HaGeZi tiers (light, normal, pro,
+    promini, proplus, proplusmini, ultimate, ultimatemini) plus modular add-ons
+    (NSFW, Gambling, TIF IP/Mini, and Device Trackers: Apple, Samsung, Xiaomi,
+    Microsoft, Amazon, LG, Roku, and TikTok).
+2.  Deterministic Domestic DNS Isolation: Injects domestic DoH and unpoisoned
+    bootstrap resolvers (193.186.32.32, 223.5.5.5, 119.29.29.29) with dedicated
+    nameserver-policy and fake-ip-filter entries to eliminate DNS leaks.
+3.  Automated Proxy Group Resolution: Dynamically traverses configuration proxy
+    groups and attaches the primary egress group without hardcoded names.
+4.  QUIC Censorship Bypass: Enforces UDP 443 rejection
+    (AND,((NETWORK,UDP),(DST-PORT,443)),REJECT) to force instantaneous TCP
+    fallback, preventing ISP UDP-throttling.
 
-## 📦 Ruleset Catalog & Distribution Endpoints
+🛡️ Cyber Threat Mitigation & Whitelist Integrity
 
-All release assets are rebuilt automatically twice daily (03:00 and 15:00 UTC) and distributed via both zero-cache GitHub direct links and purged jsDelivr edge mirrors:
+  - Targeted Threat Elimination (iran-all-security & iran-all-security-ip):
+    Intercepts cloned phishing portals mimicking judiciary services (sana /
+    adliran), fraudulent subsidy pages, card-to-card traps, and malicious C2
+    IPs.
+  - Deterministic Financial Protection (UNBREAK_WHITELIST): Enforces an
+    immutable exemption layer during Python compilation (build.py) for central
+    payment infrastructure (*.shaparak.ir), all licensed Payment Service
+    Providers (Behpardakht, Sadad, Asan Pardakht, Saman Kish, Parsian, ZarinPal,
+    etc.), core Iranian banks, and critical SMS notification endpoints
+    (kavenegar.com, ghasedak.me). Legitimate payment callbacks are guaranteed
+    never to drop.
+  - Ad & Telemetry Suppression (iran-all-ads): Neutralizes domestic mobile ad
+    SDKs, banner trackers, and analytics telemetry without breaking host
+    applications.
+  - Domestic Betting & Casino Blocking (iran-modular-gambling): Blocks domestic
+    gambling portals and illegal payment routing scripts.
 
-* **Direct GitHub Releases URL (Recommended - Real-time & Zero Cache Lag):**  
-  `https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/`
-* **Edge CDN URL (Failover):**  
-  `https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/`
+🔄 Pipeline Resilience via Baseline Storage
 
-### 1. Macro Datasets (All-In-One Suite)
-| Ruleset Identifier | Scope / Content | Action | Supported Formats |
-| :--- | :--- | :---: | :---: |
-| **`iran-all-domains`** | 100% of validated Iranian domains | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.list) |
-| **`iran-all-domains-lite`** | Essential high-traffic domestic domains | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.list) |
-| **`iran-all-ip`** | Full supernetted RIPE IPv4/IPv6 subnets | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.list) |
-| **`iran-all-ads`** | Domestic ad servers, SDKs, and trackers | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.list) |
-| **`iran-all-security`** | Phishing portals, fake banks, and malware | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.list) |
-| **`iran-all-security-ip`**| Malicious IP addresses, C2 nodes, and bots | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.list) |
-| **`iran-all-apps`** | Android package IDs & Windows processes | `DIRECT` | [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.yaml) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.json) |
-| **`iran-asn`** | Autonomous System Numbers of Iranian ISPs | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.yaml) |
-| **`iran-unified`** | Single classical master file for legacy clients | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.yaml) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.list) |
+To prevent build failures, cache corruption, or upstream network disruptions
+during GitHub Actions execution, the build pipeline incorporates a Golden
+Baseline Resilience Database (data/baseline/):
 
-### 2. Modular Datasets (Zero-Overlap Granular Suite)
-| Ruleset Identifier | Specific Scope | Action | Supported Formats |
-| :--- | :--- | :---: | :---: |
-| **`iran-modular-banking`** | Banks, Shaparak gateways, crypto, bourse | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.list) |
-| **`iran-modular-gov`** | State portals, Sana, judiciary, tax services | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.list) |
-| **`iran-modular-media`** | VOD, streaming platforms, Aparat, Filimo | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.list) |
-| **`iran-modular-gaming`** | Domestic game matchmaking & Radar Game | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.list) |
-| **`iran-modular-download`** | High-speed software mirrors, ISOs, Soft98 | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.list) |
-| **`iran-modular-cloud`** | National cloud CIDRs (Arvan, Derak, ParsPack) | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.list) |
-| **`iran-modular-isp`** | Supernetted ISP allocations (IP-CIDR) | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.list) |
-| **`iran-modular-gambling`** | Online gambling portals & betting scripts | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.list) |
-| **`iran-modular-other`** | Remainder set (E-commerce, Snapp, Digikala) | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.list) |
+  - If an upstream source fails or returns insufficient entries, the pipeline
+    automatically falls back to verified local baseline snapshots
+    (load_baseline).
+  - Successful fetch operations automatically refresh the local baseline dataset
+    (save_baseline).
+  - This architectural choice guarantees a 0% build failure rate.
 
-### 3. Unified V2Ray / Xray Protobuf Datasets
-* **`geosite.dat`**: Full tags (`geosite:iran-all-domains`, `geosite:iran-modular-banking`, `geosite:iran-modular-gov`, `geosite:iran-modular-media`, `geosite:iran-modular-gaming`, `geosite:iran-modular-download`, `geosite:iran-modular-other`, `geosite:iran-all-ads`, `geosite:iran-all-security`, `geosite:iran-modular-gambling`, `geosite:ir`) ➔ [Download geosite.dat](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/geosite.dat)
-* **`geoip.dat`**: Country tags (`geoip:ir`, `geoip:iran-modular-cloud`, `geoip:iran-modular-isp`, `geoip:iran-all-security-ip`) ➔ [Download geoip.dat](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/geoip.dat)
-* **`iran.dat`**: Drop-in unified replacement for Marzban and traditional Xray server deployments ➔ [Download iran.dat](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran.dat)
+📦 Ruleset Catalog & Distribution Endpoints
 
----
+All 89 release assets are rebuilt automatically twice daily (03:00 and 15:00
+UTC) and distributed via both zero-cache GitHub direct links and purged jsDelivr
+edge mirrors:
 
-## 🚀 Client & Platform Integration
+  - Direct GitHub Releases URL (Recommended - Real-time & Zero Cache Lag):
+    https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/
+  - Edge CDN URL (Failover):
+    https://fastly.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/
 
-### 1. Mihomo / Clash Meta (`config.yaml`) - Modular Setup
+1. Macro Datasets (All-In-One Suite)
 
-```yaml
+| Ruleset Identifier          | Scope / Content                                 | Action   | Supported Formats                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| :-------------------------- | :---------------------------------------------- | :------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| **`iran-all-domains`**      | 100% of validated Iranian domains               | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains.list)                          |
+| **`iran-all-domains-lite`** | Essential high-traffic domestic domains         | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-domains-lite.list) |
+| **`iran-all-ip`**           | Full supernetted RIPE IPv4/IPv6 subnets         | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ip.list)                                                   |
+| **`iran-all-ads`**          | Domestic ad servers, SDKs, and trackers         | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.list)                                              |
+| **`iran-all-security`**     | Phishing portals, fake banks, and malware       | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.list)                     |
+| **`iran-all-security-ip`**  | Malicious IP addresses, C2 nodes, and bots      | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.list)      |
+| **`iran-all-apps`**         | Android package IDs & Windows processes         | `DIRECT` | [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.yaml) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.json)                                                                                                                                              |
+| **`iran-asn`**              | Autonomous System Numbers of Iranian ISPs       | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.yaml)                                                                                                                                                                                                                                                                                                                                                                    |
+| **`iran-unified`**          | Single classical master file for legacy clients | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.yaml) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.list)                                                                                                                                                                                                                                                      |
+
+2. Modular Datasets (Zero-Overlap Granular Suite)
+
+| Ruleset Identifier          | Specific Scope                                | Action   | Supported Formats                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| :-------------------------- | :-------------------------------------------- | :------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| **`iran-modular-banking`**  | Banks, Shaparak gateways, crypto, bourse      | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-banking.list)      |
+| **`iran-modular-gov`**      | State portals, Sana, judiciary, tax services  | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gov.list)                          |
+| **`iran-modular-media`**    | VOD, streaming platforms, Aparat, Filimo      | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-media.list)                |
+| **`iran-modular-gaming`**   | Domestic game matchmaking & Radar Game        | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gaming.list)           |
+| **`iran-modular-download`** | High-speed software mirrors, ISOs, Soft98     | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-download.list) |
+| **`iran-modular-cloud`**    | National cloud CIDRs (Arvan, Derak, ParsPack) | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-cloud.list)                |
+| **`iran-modular-isp`**      | Supernetted ISP allocations (IP-CIDR)         | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-isp.list)                          |
+| **`iran-modular-gambling`** | Online gambling portals & betting scripts     | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-gambling.list) |
+| **`iran-modular-other`**    | Remainder set (E-commerce, Snapp, Digikala)   | `DIRECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-modular-other.list)                |
+
+3. Unified V2Ray / Xray Protobuf Datasets
+
+  - geosite.dat: Full tags (geosite:iran-all-domains,
+    geosite:iran-modular-banking, geosite:iran-modular-gov,
+    geosite:iran-modular-media, geosite:iran-modular-gaming,
+    geosite:iran-modular-download, geosite:iran-modular-other,
+    geosite:iran-all-ads, geosite:iran-all-security,
+    geosite:iran-modular-gambling, geosite:ir) ➔ Download geosite.dat
+  - geoip.dat: Country tags (geoip:ir, geoip:iran-modular-cloud,
+    geoip:iran-modular-isp, geoip:iran-all-security-ip) ➔ Download geoip.dat
+  - iran.dat: Drop-in unified replacement for Marzban and traditional Xray
+    server deployments ➔ Download iran.dat
+
+🚀 Client & Platform Integration
+
+1. Mihomo / Clash Meta (config.yaml) - Modular Setup
+
 rule-providers:
   iran-all-security:
     type: http
@@ -188,13 +239,9 @@ rules:
   - RULE-SET,iran-modular-other,DIRECT
   - RULE-SET,iran-all-ip,DIRECT,no-resolve
   - MATCH,PROXY
-```
 
----
+2. Sing-box Core (config.json)
 
-### 2. Sing-box Core (`config.json`)
-
-```json
 {
   "route": {
     "rule_set": [
@@ -235,15 +282,9 @@ rules:
     ]
   }
 }
-```
 
----
+3. V2Ray / Xray / Marzban Outbound Server Routing
 
-### 3. V2Ray / Xray / Marzban Outbound Server Routing
-
-Configure the outbound routing to prevent server-side loopbacks and protect the server egress IP:
-
-```json
 {
   "routing": {
     "domainStrategy": "IPIfNonMatch",
@@ -271,48 +312,88 @@ Configure the outbound routing to prevent server-side loopbacks and protect the 
     ]
   }
 }
-```
 
----
+📡 Telemetry Sources & Upstream Feeds
 
-## 🇮🇷 راهنمای جامع به زبان فارسی
+The automated pipeline (build.py) aggregates telemetry from authorized
+registries and vetted sources:
 
-<details>
-<summary><b>برای مطالعه معماری مهندسی داده و راهنمای دو اسکریپت کلیک کنید</b></summary>
-<br>
+1. Official IP & ASN Allocations:
 
-این پروژه یک اکوسیستم مسیریابی و امنیت سایبری چندسکویی است که به‌صورت بلادرنگ داده‌های اینترنتی کشور را از مراکز رسمی ثبت اینترنت منطقه‌ای (**RIPE NCC**) و میرورهای اعتبارسنجی‌شده استخراج کرده و به فرمت‌های باینری و سبک کامپایل می‌کند.
+  - RIPE NCC Delegated Statistics:
+    ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest.
+  - APNIC Mirror Delegation:
+    ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest.
+  - Domestic Datacenters: ygbkm/resources (ipv4.txt & ipv6.txt).
+  - Meta Rules Datasets: MetaCubeX/meta-rules-dat.
+  - Chocolate4U Routing Feeds: Chocolate4U/Iran-clash-rules (ircidr.txt &
+    irasn.txt).
 
-### ۱. انتخاب میان دو اسکریپت ادغام (Merge Scripts):
-در پوشه ریشه مخزن دو اسکریپت جاوااسکریپت قرار دارد:
-* **`clash-verge-merge-macro.js`:**  
-  ویژه کاربرانی که می‌خواهند با کمترین تنظیمات و به صورت یکپارچه تمام ترافیک داخلی را مستقیم (Direct) کنند و دغدغه‌ای برای تفکیک دسته‌ها ندارند.
-* **`clash-verge-merge-modular.js`:**  
-  ویژه کاربرانی که خواهان کنترل دقیق، صفر درصد تداخل دامنه‌ها و امکان روشن/خاموش کردن دسته‌های مجزا (بانک‌ها، رسانه‌ها، سامانه‌های دولتی، گیمینگ و هاست‌های دانلود) هستند.
+2. Cloud Datacenters:
 
-### ۲. ادغام قدرتمند با فیلترهای جهانی HaGeZi:
-هر دو اسکریپت شامل پنل کاربری (`0. USER CONTROL PANEL`) با برچسب‌های راهنما هستند:
-* تنظیم سطوح استاندارد مسدودسازی تبلیغات از **Light** تا **Ultimate** و نسخه‌های کم‌مصرف **Mini**.
-* فیدهای امنیت سایبری **TIF** (تهدیدات سروری و بدافزار) و انسداد درگاه‌های جعلی.
-* ترکرهای اختصاصی تجهیزات هوشمند شامل سامسونگ، شیائومی، اپل، مایکروسافت، تلویزیون‌های ال‌جی، روکو و تیک‌تاک.
-* مسدودسازی قمار و محتوای بزرگسالان (NSFW) به‌صورت کاملاً ماژولار.
+  - Subnets for ArvanCloud (arvancloud.txt), Derak (derakcloud.txt), Iranserver
+    (iranserver.txt), and ParsPack (parspack.txt).
 
-### ۳. چرا لینک‌های GitHub Direct به جای jsDelivr؟
-سرویس‌های CDN واسط نظیر jsDelivr تغییرات ریلیز را با تاخیرهای چند روزه کَش (Cache Lag) می‌کنند. آدرس‌های مستقیم `releases/latest/download` بدون هیچ‌گونه تاخیر و به‌محض اتمام فرایند ساخت خودکار، آخرین نسخه فایل‌های فشرده کامپایل‌شده را به کلاینت تحویل می‌دهند.
+3. Domestic & Government Domains:
 
-</details>
+  - Hosted Domains Catalog: @bootmortis/iran-hosted-domains (domains.txt &
+    clash_rules_other.txt).
+  - Information Technology Organization (ITO): @bootmortis/ito-gov-mirror
+    (domains.csv).
+  - Domestic Heuristics: @ygbkm/clash-rules-iran.
 
----
+4. Security, Phishing, & Adblocking:
 
-## 📡 Data Sources & Attribution
+  - PersianBlocker Feeds: @MasterKia/PersianBlocker (PersianBlockerHosts.txt,
+    PersianBlockerAds-Hosts.txt, PersianBlockerPhishing.txt,
+    PersianBlockerGambling.txt).
+  - Global Phishing Filters: @curbengh/phishing-filter.
+  - Threat Intelligence Sets: Chocolate4U (phishing.txt, malware.txt,
+    phishing-ip.txt, malware-ip.txt).
 
-* **Official Regional Internet Registries (RIRs):** Delegated allocations directly parsed from [RIPE NCC](https://ftp.ripe.net/) and [APNIC](https://ftp.apnic.net/).
-* **National Domain Catalogs:** Verified domestic domains from [@bootmortis/iran-hosted-domains](https://github.com/bootmortis/iran-hosted-domains) and official ITO registries.
-* **Threat & Adblock Feeds:** Heuristic phishing datasets and domestic mobile ad patterns from [@MasterKia/PersianBlocker](https://github.com/MasterKia/PersianBlocker).
-* **Compilers & Tooling:** [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo) (MRS format), [SagerNet/sing-box](https://github.com/SagerNet/sing-box) (SRS format), and [v2fly/geoip](https://github.com/v2fly/geoip) (DAT format).
+5. Applications & Processes:
 
----
+  - Iranian Android Packages: @SamadiPour/iran-android-apps (packages.json).
+  - Desktop Windows Binaries: Curated list (Bale.exe, Eitaa.exe, Rubika.exe,
+    Soroush.exe, IDMan.exe, etc.).
 
-## 📄 License
+🇮🇷 راهنمای جامع به زبان فارسی
 
-This repository is licensed under the **[MIT License](LICENSE)**. Network routing telemetry and domain datasets remain under the intellectual rights of their respective official registries and maintainers.
+چرا دامنه‌ها با Mozilla PSL پالایش می‌شوند؟
+
+در وب‌سایت‌های ایرانی پسوندهای مرتبه دوم زیادی نظیر .co.ir، .gov.ir، .ac.ir و
+.sch.ir وجود دارد. اسکریپت‌های سنتی معمولاً بخش آخر دامنه‌ها را جدا می‌کنند و با
+دامنه‌هایی مثل ir یا co.ir رفتار یک دامنه مستقل را انجام می‌دهند که باعث اختلال
+می‌شود.
+این پروژه از کتابخانه رسمی tldextract و پایگاه داده موزیلا (Mozilla Public
+Suffix List) استفاده می‌کند تا زیردامنه‌ها به‌طور دقیق شناسایی شده و بخش ریشه
+ثبت‌شده (Registered Domain) استخراج شود. بدین ترتیب:
+
+  - زیردامنه‌های زائد حذف می‌شوند (api.aparat.com حذف شده و ریشه aparat.com
+    می‌ماند).
+  - دامنه‌های اشتراکی مانند ac.ir به اشتباه مسدود یا مستقیم نمی‌شوند.
+
+عملکرد فشرده‌سازی ریاضی IPها (Supernetting)
+
+به‌جای درج هزاران خط ساب‌نت پراکنده، پایپ‌لاین پایتون با متد
+ipaddress.collapse_addresses تمام رنج‌های متوالی را با یکدیگر ادغام می‌کند. برای
+مثال ده‌ها ساب‌نت ۲۴/ مجاور به یک ساب‌نت ۱۹/ تبدیل می‌شوند. این فرآیند مصرف
+حافظه رم (RAM) دستگاه‌هایی مانند روترهای ضعیف را تا ۷۰٪ کاهش می‌دهد.
+
+نحوه استفاده از اسکریپت‌های ادغام در Clash Verge Rev
+
+1.  وارد نرم‌افزار Clash Verge Rev شوید.
+2.  به بخش Profiles رفته و روی پروفایل اشتراک فعال خود راست‌کلیک کرده و گزینه
+    Edit Rules یا Merge Scripts را باز کنید.
+3.  کد یکی از دو فایل clash-verge-merge-macro.js (رویکرد یکپارچه) یا
+    clash-verge-merge-modular.js (رویکرد تفکیکی) را کپی کرده و در تب مربوطه
+    جای‌گذاری کنید.
+4.  تنظیمات دلخواه مسدودسازی (نظیر HaGeZi یا ترکرهای OEM) را در بالای کد تغییر
+    داده و تغییرات را ذخیره نمایید.
+
+📄 License
+
+This repository is licensed under the MIT License. Network routing telemetry and
+domain datasets remain under the intellectual rights of their respective
+official registries and maintainers.
+
