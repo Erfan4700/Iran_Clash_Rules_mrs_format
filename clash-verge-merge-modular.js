@@ -7,7 +7,7 @@ const ENABLE_QUIC_BLOCK = true;
 
 // "light" | "normal" | "pro" | "proplus" | "ultimate"
 const HAGEZI_TIER = "proplus";
-const ENABLE_HAGEZI_TIF = true;        // HaGeZi Threat Intelligence Feeds (Full Operational)
+const ENABLE_HAGEZI_TIF = false;        // HaGeZi Threat Intelligence Feeds (Full Operational)
 const ENABLE_NATIVE_TRACKERS = true;   // Apple & Windows Telemetry Trackers
 
 const ENABLE_IRAN_ADS = true;          // Iran Domestic Ads & Trackers
