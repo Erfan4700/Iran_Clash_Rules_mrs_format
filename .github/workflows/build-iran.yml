@@ -66,7 +66,7 @@ jobs:
           sudo mv sing-box /usr/local/bin/
           sing-box version
 
-      - name: Run Hybrid Engine (Macro & Modular)
+      - name: Run Clean Hybrid Engine (Macro & Modular)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -104,12 +104,12 @@ jobs:
             echo "[-] Baseline is up-to-date. Skipping commit."
           fi
 
-      - name: Verify Universal Suite Artifacts
+      - name: Verify Clean Suite Artifacts
         run: |
-          echo "=== Universal Suite Artifacts Summary ==="
+          echo "=== Universal Clean Suite Artifacts Summary ==="
           ls -lh output_mrs/
 
-      - name: Deploy All Artifacts to Release Branch
+      - name: Deploy Clean Artifacts to Release Branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -126,10 +126,10 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
-          RELEASE_NOTES="Automated build featuring Hybrid Architecture:
-          ★ Macro All-In-One: iran-all-domains, iran-all-ip, iran-all-ads, iran-all-security
-          ★ Modular Disjoint: iran-modular-banking, iran-modular-gov, iran-modular-media, iran-modular-gaming, iran-modular-download, iran-modular-other
-          ★ Multi-Platform: Mihomo (.mrs), Sing-box (.srs / .json), V2Ray/Xray (.dat), Surge (.list), Clash (.yaml / .txt)
+          RELEASE_NOTES="Automated Clean Build (Zero Duplicates / Zero Loss):
+          ★ Macro All-In-One: iran-all-domains, iran-all-ip, iran-all-ads, iran-all-security, iran-all-apps
+          ★ Modular Disjoint: iran-modular-banking, iran-modular-gov, iran-modular-media, iran-modular-gaming, iran-modular-download, iran-modular-isp, iran-modular-cloud, iran-modular-gambling, iran-modular-other
+          ★ Standard Formats: Mihomo (.mrs), Sing-box (.srs / .json), V2Ray/Xray (.dat), Surge (.list), Classical (.yaml / .txt)
           Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
@@ -149,12 +149,12 @@ jobs:
             --notes "$RELEASE_NOTES" \
             --latest
 
-      - name: Purge jsDelivr CDN Cache (Dynamic All-Files)
+      - name: Purge jsDelivr CDN Cache (Dynamic All-Clean-Files)
         run: |
           echo "Waiting 25 seconds for GitHub RAW storage & Release branch propagation..."
           sleep 25
 
-          echo "=== Dynamically Purging ALL Artifacts from jsDelivr ==="
+          echo "=== Dynamically Purging ALL Generated Artifacts from jsDelivr ==="
           for FILE_PATH in output_mrs/*; do
             if [ -f "$FILE_PATH" ]; then
               FILE_NAME=$(basename "$FILE_PATH")
