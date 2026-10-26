@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL
+// 0. USER CONTROL PANEL (MODULAR DIRECT GITHUB EDITION)
 // ==============================================================================
 
 const ENABLE_SAFE_SEARCH = false;
@@ -7,7 +7,7 @@ const ENABLE_QUIC_BLOCK = true;
 
 // "light" | "normal" | "pro" | "proplus" | "ultimate"
 const HAGEZI_TIER = "proplus";
-const ENABLE_HAGEZI_TIF = false;        // HaGeZi Threat Intelligence Feeds (Full Operational)
+const ENABLE_HAGEZI_TIF = false;        // HaGeZi Threat Intelligence Feeds (Active)
 const ENABLE_NATIVE_TRACKERS = true;   // Apple & Windows Telemetry Trackers
 
 const ENABLE_IRAN_ADS = true;          // Iran Domestic Ads & Trackers
@@ -30,14 +30,14 @@ const SECURITY_INTERVAL = 24 * 3600;
 const STANDARD_INTERVAL = 48 * 3600;   
 
 // ==============================================================================
-// 1. DATASETS, REGEX & CONSTANTS (STRICTLY 2 REPOSITORIES)
+// 1. DATASETS & REPOSITORIES (DIRECT GITHUB RAW - ZERO CDN CACHE LAG)
 // ==============================================================================
 
-// 1. Official Repository: Erfan4700/iran-routing-rules
-const IRAN_RULES_BASE_URL = "https://cdn.jsdelivr.net/gh/Erfan4700/iran-routing-rules@release/";
+// 1. Official Repository Direct Raw: Erfan4700/iran-routing-rules
+const IRAN_RULES_BASE_URL = "https://raw.githubusercontent.com/Erfan4700/iran-routing-rules/release/";
 
-// 2. Official Global Adblock: MiHomoer/MiHomo-Hagezi
-const HAGEZI_MRS_URL = "https://cdn.jsdelivr.net/gh/MiHomoer/MiHomo-Hagezi@release/";
+// 2. Official Global Adblock Direct Raw: MiHomoer/MiHomo-Hagezi
+const HAGEZI_MRS_URL = "https://raw.githubusercontent.com/MiHomoer/MiHomo-Hagezi/release/";
 
 const HAGEZI_TIERS_MAP = Object.freeze({
   light: "HageziLight",
@@ -250,17 +250,16 @@ function main(config, profileName) {
   dns["nameserver-policy"] = Object.assign(dns["nameserver-policy"] ?? {}, nsPolicy);
 
   // ============================================================================
-  // RULE-PROVIDERS DEFINITION (CLEAN HYBRID ARCHITECTURE)
+  // RULE-PROVIDERS DEFINITION (DIRECT GITHUB RAW)
   // ============================================================================
   const providers = {};
 
-  // 1. Global Adblock / Trackers (Hagezi)
+  // 1. Global Adblock / Trackers (Hagezi via Direct GitHub Raw)
   providers["hagezi-main"] = makeProvider(
     `hagezi-${HAGEZI_TIER}`, "domain", "mrs",
     `${HAGEZI_MRS_URL}${SELECTED_HAGEZI_NAME}.mrs`, STANDARD_INTERVAL
   );
 
-  // Fully Operational HaGeZi Threat Intelligence Feeds (TIF)
   if (ENABLE_HAGEZI_TIF) {
     providers["hagezi-tif"] = makeProvider("HageziTIF", "domain", "mrs", `${HAGEZI_MRS_URL}HageziTIF.mrs`, SECURITY_INTERVAL);
   }
@@ -270,23 +269,23 @@ function main(config, profileName) {
     providers["hagezi-windows"] = makeProvider("HageziWindows", "domain", "mrs", `${HAGEZI_MRS_URL}HageziWindows.mrs`, STANDARD_INTERVAL);
   }
 
-  // 2. Iran Domestic Ads (Your Repo)
+  // 2. Iran Domestic Ads (via Direct GitHub Raw)
   if (ENABLE_IRAN_ADS) {
     providers["iran-all-ads"] = makeProvider("iran-all-ads", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ads.mrs`, STANDARD_INTERVAL);
   }
 
-  // 3. Iran Domestic Security: Phishing & Malware (Your Repo)
+  // 3. Iran Domestic Security: Phishing & Malware (via Direct GitHub Raw)
   if (ENABLE_IRAN_SECURITY) {
     providers["iran-all-security"] = makeProvider("iran-all-security", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security.mrs`, SECURITY_INTERVAL);
     providers["iran-all-security-ip"] = makeProvider("iran-all-security-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security-ip.mrs`, SECURITY_INTERVAL);
   }
 
-  // 4. Iran Gambling Filter (Your Repo)
+  // 4. Iran Gambling Filter (via Direct GitHub Raw)
   if (ENABLE_GAMBLING_FILTER) {
     providers["iran-modular-gambling"] = makeProvider("iran-modular-gambling", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gambling.mrs`, STANDARD_INTERVAL);
   }
 
-  // 5. Iran Modular Sub-Categories (Your Repo)
+  // 5. Iran Modular Sub-Categories (via Direct GitHub Raw)
   if (ENABLE_IRAN_DIRECT) {
     if (ENABLE_MODULAR_BANKING) {
       providers["iran-modular-banking"] = makeProvider("iran-modular-banking", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-banking.mrs`, STANDARD_INTERVAL);
