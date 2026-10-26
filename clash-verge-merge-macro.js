@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL (MACRO PRO DIRECT GITHUB EDITION)
+// 0. USER CONTROL PANEL (Macro)
 // ==============================================================================
 
 const ENABLE_SAFE_SEARCH = false;
@@ -10,43 +10,43 @@ const HAGEZI_TIER = "proplus";
 
 // --- GLOBAL CONTENT BLOCKING ---
 const ENABLE_PORN_FILTER = true;        // HaGeZi NSFW (100% Global Adult Content)
-const ENABLE_GAMBLING_FILTER = true;    // HaGeZi Global Gambling + Iran Betting/Casinos
-const ENABLE_POPUP_ADS = false;         // Optional (Most are already covered in ProPlus)
+const ENABLE_GAMBLING_FILTER = true;    // HaGeZi Medium + Iran Modular Gambling
+const ENABLE_POPUP_ADS = false;         // Optional (Covered in ProPlus)
 
 // --- ADVANCED THREAT INTELLIGENCE & SECURITY ---
-const ENABLE_HAGEZI_TIF = false;        // Heavy 12MB Domain Feed (Not needed for Iran, ProPlus is enough)
-const ENABLE_HAGEZI_TIF_IP = true;      // Lightweight 81KB IP-CIDR Threat Feed (Keeps you safe from global bots)
-const ENABLE_HAGEZI_FAKE = false;       // Optional (Covered in ProPlus)
-const ENABLE_HAGEZI_BADWARE = false;    // Optional (Covered in ProPlus)
+const ENABLE_HAGEZI_TIF = false;        // Heavy 12MB Domain Feed
+const ENABLE_HAGEZI_TIF_IP = true;      // Lightweight 81KB IP-CIDR Threat Feed
+const ENABLE_HAGEZI_FAKE = false;       // Optional
+const ENABLE_HAGEZI_BADWARE = false;    // Optional
 
-// --- NATIVE OEM TRACKERS (POPULAR BRANDS IN IRAN) ---
-const ENABLE_TRACKER_XIAOMI = true;     // Xiaomi / Redmi MIUI & HyperOS Telemetry
+// --- NATIVE OEM TRACKERS ---
+const ENABLE_TRACKER_XIAOMI = false;    // Xiaomi / HyperOS Telemetry
 const ENABLE_TRACKER_SAMSUNG = true;    // Samsung OneUI Telemetry
-const ENABLE_TRACKER_APPLE = false;      // Apple iOS / macOS Telemetry
+const ENABLE_TRACKER_APPLE = false;     // Apple iOS / macOS Telemetry
 const ENABLE_TRACKER_MICROSOFT = true;  // Windows Telemetry
-const ENABLE_TRACKER_HUAWEI = false;     // Huawei EMUI / HarmonyOS Telemetry
+const ENABLE_TRACKER_HUAWEI = false;    // Huawei Telemetry
 const ENABLE_TRACKER_BBK = false;       // Oppo / Realme / Vivo Telemetry
 
 // --- ANTI-PIRACY & COPYRIGHT ---
 const ENABLE_ANTI_PIRACY = false;
 
-// --- IRAN CORE SUITE (MACRO ALL-IN-ONE) ---
+// --- IRAN CORE SUITE ---
 const ENABLE_IRAN_ADS = true;          // Iran Macro Ads & Trackers
-const ENABLE_IRAN_SECURITY = true;     // Iran Phishing, Fake Gateways & Malware (100% Essential for Iran)
+const ENABLE_IRAN_SECURITY = true;     // Iran Phishing, Fake Gateways & Malware
 const ENABLE_IRAN_DIRECT = true;       // Master Switch for Domestic Direct Routing
 
 const SECURITY_INTERVAL = 24 * 3600;   
 const STANDARD_INTERVAL = 48 * 3600;   
 
 // ==============================================================================
-// 1. DATASETS & REPOSITORIES (DIRECT GITHUB RAW - ZERO CDN CACHE LAG)
+// 1. DATASETS & REPOSITORIES (DIRECT GITHUB RELEASES - FAST & UP-TO-DATE)
 // ==============================================================================
 
-// 1. Official Repository Direct Raw: Erfan4700/iran-routing-rules
-const IRAN_RULES_BASE_URL = "https://raw.githubusercontent.com/Erfan4700/iran-routing-rules/release/";
+// 1. Official Iran Routing Rules Release Assets
+const IRAN_RULES_BASE_URL = "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/";
 
-// 2. Official Global Adblock Direct Raw: MiHomoer/MiHomo-Hagezi
-const HAGEZI_RAW_URL = "https://raw.githubusercontent.com/MiHomoer/MiHomo-Hagezi/release/";
+// 2. Official HaGeZi MRS Format Release Assets
+const HAGEZI_RAW_URL = "https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format/releases/latest/download/";
 
 const HAGEZI_TIERS_MAP = Object.freeze({
   light: "HageziLight",
@@ -172,7 +172,6 @@ function main(config, profileName) {
     }
   }
 
-  // Bypass heavy GeoIP/GeoSite databases to maximize speed and RAM efficiency
   config["geodata-mode"] = false;
   config["geo-auto-update"] = false;
 
@@ -226,7 +225,6 @@ function main(config, profileName) {
   dns["proxy-server-nameserver"] = UNPOISONED_PROXY_RESOLVERS;
   dns["direct-nameserver"] = PURE_DOMESTIC_RESOLVERS;
 
-  // Ultra-Fast Macro Fake-IP Filter
   const fakeIpList = [
     "+.ir",
     ...MANUAL_WILDCARDS,
@@ -246,7 +244,6 @@ function main(config, profileName) {
 
   dns.nameserver = DOH_ENDPOINTS.map(url => `${url}#${defaultProxyGroup}`);
 
-  // Macro DNS Policy
   const nsPolicy = {
     "+.ir": PURE_DOMESTIC_RESOLVERS,
     "supl.google.com": PURE_DOMESTIC_RESOLVERS,
@@ -261,7 +258,7 @@ function main(config, profileName) {
   dns["nameserver-policy"] = Object.assign(dns["nameserver-policy"] ?? {}, nsPolicy);
 
   // ============================================================================
-  // RULE-PROVIDERS DEFINITION (OPTIMIZED DIRECT GITHUB RAW)
+  // RULE-PROVIDERS DEFINITION (OFFICIAL RELEASES DOWNLOAD PATH)
   // ============================================================================
   const providers = {};
 
@@ -290,7 +287,7 @@ function main(config, profileName) {
     providers["hagezi-nsfw"] = makeProvider("HageziNSFW", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNSFW.mrs`, STANDARD_INTERVAL);
   }
 
-  // 4. Global Gambling & Betting Block
+  // 4. Global Gambling & Betting Block (Medium Global + Domestic Iran)
   if (ENABLE_GAMBLING_FILTER) {
     providers["hagezi-gambling"] = makeProvider("HageziGamblingMedium", "domain", "mrs", `${HAGEZI_RAW_URL}HageziGamblingMedium.mrs`, STANDARD_INTERVAL);
     providers["iran-modular-gambling"] = makeProvider("iran-modular-gambling", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gambling.mrs`, STANDARD_INTERVAL);
@@ -327,7 +324,7 @@ function main(config, profileName) {
     providers["hagezi-antipiracy"] = makeProvider("HageziAntiPiracy", "domain", "mrs", `${HAGEZI_RAW_URL}HageziAntiPiracy.mrs`, STANDARD_INTERVAL);
   }
 
-  // 8. Iran Domestic Security & Ads (Your Repo)
+  // 8. Iran Domestic Security & Ads
   if (ENABLE_IRAN_ADS) {
     providers["iran-all-ads"] = makeProvider("iran-all-ads", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ads.mrs`, STANDARD_INTERVAL);
   }
@@ -336,7 +333,7 @@ function main(config, profileName) {
     providers["iran-all-security-ip"] = makeProvider("iran-all-security-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security-ip.mrs`, SECURITY_INTERVAL);
   }
 
-  // 9. Iran Master Direct (Macro All-In-One Sets via Direct GitHub Raw)
+  // 9. Iran Master Direct (Macro Sets)
   if (ENABLE_IRAN_DIRECT) {
     providers["iran-all-domains"] = makeProvider("iran-all-domains", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-domains.mrs`, STANDARD_INTERVAL);
     providers["iran-all-ip"] = makeProvider("iran-all-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ip.mrs`, STANDARD_INTERVAL);
@@ -347,11 +344,11 @@ function main(config, profileName) {
   config["rule-providers"] = Object.assign(config["rule-providers"] ?? {}, providers);
 
   // ============================================================================
-  // RULES EVALUATION PIPELINE (TOP-TO-BOTTOM OPTIMIZED ORDER)
+  // RULES EVALUATION PIPELINE
   // ============================================================================
   const ruleSet = new Set();
 
-  // 1. Essential Local Network & Private IP Bypass (Direct)
+  // 1. Local Network & Private IP Bypass (Direct)
   ruleSet.add("DST-PORT,7275,DIRECT");
   ruleSet.add("GEOIP,private,DIRECT,no-resolve");
   ruleSet.add("IP-CIDR,127.0.0.0/8,DIRECT,no-resolve");
@@ -363,16 +360,16 @@ function main(config, profileName) {
   ruleSet.add("IP-CIDR,224.0.0.0/4,DIRECT,no-resolve");
   ruleSet.add("IP-CIDR,255.255.255.255/32,DIRECT,no-resolve");
 
-  // Torrent Clients
+  // Torrents
   ruleSet.add("DST-PORT,6881-6889,DIRECT");
   ruleSet.add("DST-PORT,51413,DIRECT");
 
-  // 2. High-Priority QUIC Blocking (Immediate Fallback to TLS/TCP)
+  // 2. High-Priority QUIC Blocking
   if (ENABLE_QUIC_BLOCK) {
     ruleSet.add("AND,((NETWORK,UDP),(DST-PORT,443)),REJECT");
   }
 
-  // 3. Security, Phishing, Malware & Threat Intel (Zero-Trust Top Priority)
+  // 3. Security, Phishing, Malware & Threat Intel
   if (ENABLE_HAGEZI_TIF) ruleSet.add("RULE-SET,hagezi-tif,REJECT");
   if (ENABLE_HAGEZI_TIF_IP) ruleSet.add("RULE-SET,hagezi-tif-ip,REJECT,no-resolve");
   if (ENABLE_HAGEZI_FAKE) ruleSet.add("RULE-SET,hagezi-fake,REJECT");
@@ -406,10 +403,10 @@ function main(config, profileName) {
     ruleSet.add("RULE-SET,hagezi-native-vivo,REJECT");
   }
 
-  // 7. Anti-Piracy (Optional)
+  // 7. Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
 
-  // 8. Special Domain Overrides
+  // 8. Special Overrides
   ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
   ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
 
@@ -419,7 +416,7 @@ function main(config, profileName) {
   }
   ruleSet.add("DOMAIN-SUFFIX,ir,DIRECT");
 
-  // 10. Iran Macro All-In-One Direct Routing (Ultra-Fast & Zero-Loss)
+  // 10. Iran Macro Direct Routing
   if (ENABLE_IRAN_DIRECT) {
     ruleSet.add("RULE-SET,iran-all-apps,DIRECT,no-resolve");
     ruleSet.add("RULE-SET,iran-all-domains,DIRECT");
@@ -427,7 +424,7 @@ function main(config, profileName) {
     ruleSet.add("RULE-SET,iran-asn,DIRECT,no-resolve");
   }
 
-  // 11. Integration of Existing Profile Rules (Sanitized)
+  // 11. Profile Existing Rules Integration
   const rawRules = config.rules;
   let capturedMatchRule = null;
 
@@ -458,4 +455,4 @@ function main(config, profileName) {
   config.rules = Array.from(ruleSet);
 
   return config;
-}
+    }
