@@ -457,6 +457,11 @@ function main(config, profileName) {
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
   if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-all-ads,REJECT");
 
+  // 1. Allow Metrix ONLY for Snapp Passenger app
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
+  // 2. Kill Metrix for ALL other apps on the device
+  ruleSet.add("DOMAIN-SUFFIX,metrix.ir,REJECT");
+  
   // 6. Native OEM & App Telemetry Blockers
   if (ENABLE_TRACKER_APPLE) ruleSet.add("RULE-SET,hagezi-native-apple,REJECT");
   if (ENABLE_TRACKER_MICROSOFT) ruleSet.add("RULE-SET,hagezi-native-microsoft,REJECT");
