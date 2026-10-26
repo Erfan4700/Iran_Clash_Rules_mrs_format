@@ -18,7 +18,7 @@ const ENABLE_ANTI_PIRACY = false;        // [Optional | Standalone] Blocks torre
 
 // --- NATIVE OEM & APP TRACKERS (Device Specific - Lightweight 2KB to 4KB each) ---
 // Enable ONLY the brands you or your network devices actually use to prevent RAM bloat:
-const ENABLE_TRACKER_SAMSUNG = true;     // Samsung OneUI telemetry
+const ENABLE_TRACKER_SAMSUNG = false;     // Samsung OneUI telemetry
 const ENABLE_TRACKER_MICROSOFT = true;   // Windows diagnostic & Cortana telemetry
 const ENABLE_TRACKER_XIAOMI = false;     // Xiaomi & HyperOS tracking
 const ENABLE_TRACKER_APPLE = false;      // Apple telemetry (Keep false if using iCloud Relay)
@@ -38,8 +38,8 @@ const ENABLE_IRAN_DIRECT = true;         // Master Switch for Domestic Direct Ro
 const ENABLE_IRAN_SECURITY = true;       // Iran Phishing, Fake Gateways & Threat IPs
 const ENABLE_IRAN_ADS = true;            // Iran Ads & Trackers
 
-const SECURITY_INTERVAL = 24 * 3600;     
-const STANDARD_INTERVAL = 48 * 3600;     
+const SECURITY_INTERVAL = 48 * 3600;     
+const STANDARD_INTERVAL = 72 * 3600;     
 
 // ==============================================================================
 // 1. DATASETS & REPOSITORIES (DIRECT GITHUB RELEASES)
@@ -357,7 +357,12 @@ function main(config, profileName) {
 
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
-
+  
+  // 1. Allow Metrix ONLY for Snapp Passenger app
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
+  // 2. Kill Metrix for ALL other apps on the device
+  ruleSet.add("DOMAIN-SUFFIX,metrix.ir,REJECT");
+  
   // 6. Base Adblocking & Telemetry
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
   if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-all-ads,REJECT");
@@ -378,7 +383,7 @@ function main(config, profileName) {
     if (ENABLE_TRACKER_ROKU) ruleSet.add("RULE-SET,hagezi-native-roku,REJECT");
     if (ENABLE_TRACKER_TIKTOK_EXT) ruleSet.add("RULE-SET,hagezi-native-tiktok-ext,REJECT");
   }
-
+  
   // 8. Special Domain Overrides
   ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
   ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
