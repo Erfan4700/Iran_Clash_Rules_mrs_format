@@ -11,29 +11,28 @@ const HAGEZI_TIER = "proplus";
 // --- GLOBAL CONTENT BLOCKING ---
 const ENABLE_PORN_FILTER = true;        // HaGeZi NSFW (100% Global Adult Content)
 const ENABLE_GAMBLING_FILTER = true;    // HaGeZi Global Gambling + Iran Betting/Casinos
-const ENABLE_POPUP_ADS = true;          // HaGeZi Pop-up Ads & Aggressive Redirects
+const ENABLE_POPUP_ADS = false;         // Optional (Most are already covered in ProPlus)
 
 // --- ADVANCED THREAT INTELLIGENCE & SECURITY ---
-const ENABLE_HAGEZI_TIF = true;         // Threat Intelligence Feeds (Domain Level)
-const ENABLE_HAGEZI_TIF_IP = true;      // Threat Intelligence Feeds (IP-CIDR Level)
-const ENABLE_HAGEZI_FAKE = true;        // Fake Shops, Scams & Impersonators
-const ENABLE_HAGEZI_BADWARE = true;     // Badware Hosters & C&C Servers
+const ENABLE_HAGEZI_TIF = false;        // Heavy 12MB Domain Feed (Not needed for Iran, ProPlus is enough)
+const ENABLE_HAGEZI_TIF_IP = true;      // Lightweight 81KB IP-CIDR Threat Feed (Keeps you safe from global bots)
+const ENABLE_HAGEZI_FAKE = false;       // Optional (Covered in ProPlus)
+const ENABLE_HAGEZI_BADWARE = false;    // Optional (Covered in ProPlus)
 
 // --- NATIVE OEM TRACKERS (POPULAR BRANDS IN IRAN) ---
 const ENABLE_TRACKER_XIAOMI = true;     // Xiaomi / Redmi MIUI & HyperOS Telemetry
 const ENABLE_TRACKER_SAMSUNG = true;    // Samsung OneUI Telemetry
-const ENABLE_TRACKER_APPLE = true;      // Apple iOS / macOS Telemetry
+const ENABLE_TRACKER_APPLE = false;      // Apple iOS / macOS Telemetry
 const ENABLE_TRACKER_MICROSOFT = true;  // Windows Telemetry
-const ENABLE_TRACKER_HUAWEI = true;     // Huawei EMUI / HarmonyOS Telemetry
+const ENABLE_TRACKER_HUAWEI = false;     // Huawei EMUI / HarmonyOS Telemetry
 const ENABLE_TRACKER_BBK = false;       // Oppo / Realme / Vivo Telemetry
 
 // --- ANTI-PIRACY & COPYRIGHT ---
-// هشدار: در صورت روشن بودن، ممکن است برخی سایت‌های دانلود فیلم، کرک و تورنت مسدود شوند
 const ENABLE_ANTI_PIRACY = false;
 
 // --- IRAN CORE SUITE (MACRO ALL-IN-ONE) ---
 const ENABLE_IRAN_ADS = true;          // Iran Macro Ads & Trackers
-const ENABLE_IRAN_SECURITY = true;     // Iran Phishing, Fake Gateways & Malware
+const ENABLE_IRAN_SECURITY = true;     // Iran Phishing, Fake Gateways & Malware (100% Essential for Iran)
 const ENABLE_IRAN_DIRECT = true;       // Master Switch for Domestic Direct Routing
 
 const SECURITY_INTERVAL = 24 * 3600;   
@@ -227,9 +226,9 @@ function main(config, profileName) {
   dns["proxy-server-nameserver"] = UNPOISONED_PROXY_RESOLVERS;
   dns["direct-nameserver"] = PURE_DOMESTIC_RESOLVERS;
 
-  dns["fake-ip-filter"] = [
+  // Ultra-Fast Macro Fake-IP Filter
+  const fakeIpList = [
     "+.ir",
-    "rule-set:iran-all-domains",
     ...MANUAL_WILDCARDS,
     "+.lan", "+.local", "+.home.arpa",
     "captive.apple.com", "+.connectivitycheck.gstatic.com",
@@ -240,22 +239,29 @@ function main(config, profileName) {
     "stun.*", "*.stun.*", "supl.google.com", "+.supl.google.com",
     "location.services.mozilla.com"
   ];
+  if (ENABLE_IRAN_DIRECT) {
+    fakeIpList.splice(1, 0, "rule-set:iran-all-domains");
+  }
+  dns["fake-ip-filter"] = fakeIpList;
 
   dns.nameserver = DOH_ENDPOINTS.map(url => `${url}#${defaultProxyGroup}`);
 
+  // Macro DNS Policy
   const nsPolicy = {
     "+.ir": PURE_DOMESTIC_RESOLVERS,
-    "rule-set:iran-all-domains": PURE_DOMESTIC_RESOLVERS,
     "supl.google.com": PURE_DOMESTIC_RESOLVERS,
     "+.supl.google.com": PURE_DOMESTIC_RESOLVERS
   };
+  if (ENABLE_IRAN_DIRECT) {
+    nsPolicy["rule-set:iran-all-domains"] = PURE_DOMESTIC_RESOLVERS;
+  }
   for (let i = 0; i < MANUAL_DOMAINS.length; i++) {
     nsPolicy[`+.${MANUAL_DOMAINS[i]}`] = PURE_DOMESTIC_RESOLVERS;
   }
   dns["nameserver-policy"] = Object.assign(dns["nameserver-policy"] ?? {}, nsPolicy);
 
   // ============================================================================
-  // RULE-PROVIDERS DEFINITION (COMPREHENSIVE DIRECT GITHUB RAW)
+  // RULE-PROVIDERS DEFINITION (OPTIMIZED DIRECT GITHUB RAW)
   // ============================================================================
   const providers = {};
 
@@ -290,12 +296,12 @@ function main(config, profileName) {
     providers["iran-modular-gambling"] = makeProvider("iran-modular-gambling", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-modular-gambling.mrs`, STANDARD_INTERVAL);
   }
 
-  // 5. Pop-up Ads & Aggressive Annoyances
+  // 5. Pop-up Ads
   if (ENABLE_POPUP_ADS) {
     providers["hagezi-popups"] = makeProvider("HageziPopUpAds", "domain", "mrs", `${HAGEZI_RAW_URL}HageziPopUpAds.mrs`, STANDARD_INTERVAL);
   }
 
-  // 6. Native Telemetry Trackers (Apple, Microsoft, Xiaomi, Samsung, Huawei, etc.)
+  // 6. Native Telemetry Trackers
   if (ENABLE_TRACKER_APPLE) {
     providers["hagezi-native-apple"] = makeProvider("HageziNativeApple", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeApple.mrs`, STANDARD_INTERVAL);
   }
