@@ -177,7 +177,7 @@ function main(config, profileName) {
 
   config["tcp-concurrent"] = true;
   config["unified-delay"] = true;
-  config["find-process-mode"] = "off";
+  config["find-process-mode"] = "strict";
 
   delete config["global-client-fingerprint"];
 
