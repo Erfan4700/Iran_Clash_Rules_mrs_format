@@ -66,7 +66,7 @@ jobs:
           sudo mv sing-box /usr/local/bin/
           sing-box version
 
-      - name: Run Disjoint Modular Engine
+      - name: Run Hybrid Engine (Macro & Modular)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -98,6 +98,7 @@ jobs:
           if git status --porcelain | grep -q 'data/baseline'; then
             echo "[+] Baseline cache updated. Pushing golden snapshots to main..."
             git commit -m "chore(baseline): update golden snapshots [skip ci]"
+            git pull --rebase origin main || true
             git push origin main
           else
             echo "[-] Baseline is up-to-date. Skipping commit."
@@ -105,7 +106,7 @@ jobs:
 
       - name: Verify Universal Suite Artifacts
         run: |
-          echo "=== Universal Suite Artifacts (MRS, SRS, DAT, LIST, JSON, TXT) ==="
+          echo "=== Universal Suite Artifacts Summary ==="
           ls -lh output_mrs/
 
       - name: Deploy All Artifacts to Release Branch
@@ -125,7 +126,11 @@ jobs:
           RELEASE_TAG="latest"
           NOW=$(date -u +'%Y-%m-%d %H:%M UTC')
           RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
-          RELEASE_NOTES="Automated build featuring Disjoint Modular & Universal RuleSets: V2Ray/Xray (.dat), Mihomo (.mrs), Sing-box (.srs / .json), Shadowrocket/Surge (.list), and Remainder 'iran-other' (Zero Overlap). Last synced: $NOW"
+          RELEASE_NOTES="Automated build featuring Hybrid Architecture:
+          ★ Macro All-In-One: iran-all-domains, iran-all-ip, iran-all-ads, iran-all-security
+          ★ Modular Disjoint: iran-modular-banking, iran-modular-gov, iran-modular-media, iran-modular-gaming, iran-modular-download, iran-modular-other
+          ★ Multi-Platform: Mihomo (.mrs), Sing-box (.srs / .json), V2Ray/Xray (.dat), Surge (.list), Clash (.yaml / .txt)
+          Last synced: $NOW"
 
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
             echo "[-] Deleting old rolling release metadata..."
@@ -144,34 +149,18 @@ jobs:
             --notes "$RELEASE_NOTES" \
             --latest
 
-      - name: Purge jsDelivr CDN Cache
+      - name: Purge jsDelivr CDN Cache (Dynamic All-Files)
         run: |
-          echo "Waiting 20 seconds for GitHub RAW storage propagation..."
-          sleep 20
+          echo "Waiting 25 seconds for GitHub RAW storage & Release branch propagation..."
+          sleep 25
 
-          TARGET_FILES=(
-            "geosite.dat" "geoip.dat" "iran.dat"
-            "iran-domains.mrs" "iran-domains.srs" "iran-domains.txt" "iran-domains.json" "iran-domains.list"
-            "iran-domains-lite.mrs" "iran-domains-lite.srs" "iran-domains-lite.txt" "iran-domains-lite.json"
-            "iran-ip.mrs" "iran-ip.srs" "iran-ip.txt" "iran-ip.json" "iran-ip.list"
-            "iran-cloud.mrs" "iran-cloud.srs" "iran-cloud.txt" "iran-cloud.json" "iran-cloud.list"
-            "iran-ads.mrs" "iran-ads.srs" "iran-ads.txt" "iran-ads.json" "iran-ads.list"
-            "iran-security.mrs" "iran-security.srs" "iran-security.txt" "iran-security.json" "iran-security.list"
-            "iran-security-ip.mrs" "iran-security-ip.srs" "iran-security-ip.txt" "iran-security-ip.json"
-            "iran-gambling.mrs" "iran-gambling.srs" "iran-gambling.txt" "iran-gambling.json" "iran-gambling.list"
-            "iran-apps.srs" "iran-apps.txt" "iran-apps.yaml" "iran-apps.json"
-            "iran-media.mrs" "iran-media.srs" "iran-media.txt" "iran-media.json" "iran-media.list"
-            "iran-banking.mrs" "iran-banking.srs" "iran-banking.txt" "iran-banking.json" "iran-banking.list"
-            "iran-gov.mrs" "iran-gov.srs" "iran-gov.txt" "iran-gov.json" "iran-gov.list"
-            "iran-gaming.mrs" "iran-gaming.srs" "iran-gaming.txt" "iran-gaming.json" "iran-gaming.list"
-            "iran-download.mrs" "iran-download.srs" "iran-download.txt" "iran-download.json" "iran-download.list"
-            "iran-other.mrs" "iran-other.srs" "iran-other.txt" "iran-other.json" "iran-other.list"
-            "iran-unified.txt" "iran-unified.yaml" "iran-unified.list"
-          )
-
-          for FILE in "${TARGET_FILES[@]}"; do
-            echo -n "Purging jsDelivr for $FILE: "
-            RESPONSE=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE}")
-            STATUS=$(echo "$RESPONSE" | jq -r .status 2>/dev/null || echo "ok")
-            echo "$STATUS"
+          echo "=== Dynamically Purging ALL Artifacts from jsDelivr ==="
+          for FILE_PATH in output_mrs/*; do
+            if [ -f "$FILE_PATH" ]; then
+              FILE_NAME=$(basename "$FILE_PATH")
+              echo -n "Purging jsDelivr for $FILE_NAME: "
+              RESPONSE=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE_NAME}")
+              STATUS=$(echo "$RESPONSE" | jq -r .status 2>/dev/null || echo "ok")
+              echo "$STATUS"
+            fi
           done
