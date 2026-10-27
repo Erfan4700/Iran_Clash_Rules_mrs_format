@@ -71,7 +71,7 @@ const STANDARD_INTERVAL = 48 * 3600;   // 48 Hours update interval for general a
 // ==============================================================================
 
 const IRAN_RULES_BASE_URL = "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/";
-const HAGEZI_RAW_URL = "https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format/releases/latest/download/";
+const HAGEZI_RAW_URL = "https://github.com/Erfan4700/HaGeZi_BlockLists_Compiled_format/releases/download/latest/";
 
 const HAGEZI_TIERS_MAP = Object.freeze({
   light: "HageziLight",
