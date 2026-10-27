@@ -358,10 +358,8 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
   
-  // 1. Allow Metrix ONLY for Snapp Passenger app
+  // Allow Metrix ONLY for Snapp Passenger app
   ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
-  // 2. Kill Metrix for ALL other apps on the device
-  ruleSet.add("DOMAIN-SUFFIX,metrix.ir,REJECT");
   
   // 6. Base Adblocking & Telemetry
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
