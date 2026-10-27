@@ -10,7 +10,7 @@
 [![Security Specs](https://img.shields.io/badge/Security-Phishing%20%7C%20AdBlock%20%7C%20Zero--Trust-emerald?style=flat-square&logo=shield&logoColor=white)](#-cyber-threat-mitigation--whitelist-integrity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-An industrial-grade routing engine and cyber defense framework compiled natively into optimized binary and classical text rule-sets across **Mihomo (`.mrs`)**, **Sing-box (`.srs`)**, **V2Ray/Xray (`.dat`)**, and **Surge/Shadowrocket (`.list`)**. Powered by prefix-level CIDR mathematical supernetting, Mozilla PSL root pruning, strictly disjoint modular categorization, and ready-to-use **Macro** and **Modular** Clash Verge JavaScript processors.
+An industrial-grade routing engine and cyber defense framework compiled natively into optimized binary and classical text rule-sets across **Mihomo (`.mrs`)**, **Sing-box (`.srs`)**, **V2Ray/Xray (`.dat`)**, and **Surge/Shadowrocket (`.list`)**. Powered by prefix-level CIDR mathematical supernetting, Mozilla PSL root pruning, strictly disjoint modular categorization, and ready-to-use **Macro**, **IranMacro**, and **Modular** Clash Verge JavaScript processors.
 
 [Architecture](#-macro-vs-modular-architectural-taxonomy) • [Merge Scripts](#-clash-verge-merge-scripts-javascript-runtime) • [Catalog & Endpoints](#-ruleset-catalog--distribution-endpoints) • [Client Setup](#-client--platform-integration) • [Telemetry Sources](#-telemetry-sources--upstream-feeds) • [راهنمای جامع فارسی](#-راهنمای-جامع-به-زبان-فارسی)
 
@@ -75,18 +75,22 @@ $$\text{iran-modular-other} = \text{iran-all-domains} \setminus (\text{banking} 
 
 ## ⚡ Clash Verge Merge Scripts (JavaScript Runtime)
 
-This repository includes two production-hardened JavaScript merge processors in the root directory for **Clash Verge Rev**, **Mihomo Party**, and **FlClash**. Both scripts feature native integration with the **[HaGeZi MRS Blocklists](https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format)**, automated domestic DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak suppression.
+This repository includes **three specialized production-hardened JavaScript merge processors** in the root directory for **Clash Verge Rev**, **Mihomo Party**, and **FlClash**. All scripts feature native integration with the **[HaGeZi MRS Blocklists](https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format)**, automated domestic DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak suppression.
 
 ```text
-├── clash-verge-merge-macro.js    # For users who prefer a single macro switch for all Iran traffic
-└── clash-verge-merge-modular.js  # For users demanding per-category toggles (Banking, Media, Gaming, etc.)
+├── clash-verge-merge-Macro.js       # [Ultra-Light] Full Macro: Iran Macro + HaGeZi Macro Bundles (Lowest RAM/CPU)
+├── clash-verge-merge-IranMacro.js   # [Hybrid] Macro Iran (iran-all-*) + Granular Modular HaGeZi Lists
+└── clash-verge-merge-modular.js     # [Full Granular] Per-category toggles for Iran (Banking, Media, Gov, etc.)
 ```
 
-### Features Shared by Both Scripts:
-1. **Dynamic HaGeZi Integration:** Supports all HaGeZi tiers (`light`, `normal`, `pro`, `promini`, `proplus`, `proplusmini`, `ultimate`, `ultimatemini`) plus modular add-ons (NSFW, Gambling, TIF IP/Mini, and Device Trackers: Apple, Samsung, Xiaomi, Microsoft, Amazon, LG, Roku, and TikTok).
-2. **Deterministic Domestic DNS Isolation:** Injects domestic DoH and unpoisoned bootstrap resolvers (`193.186.32.32`, `223.5.5.5`, `119.29.29.29`) with dedicated `nameserver-policy` and `fake-ip-filter` entries to eliminate DNS leaks.
-3. **Automated Proxy Group Resolution:** Dynamically traverses configuration proxy groups and attaches the primary egress group without hardcoded names.
-4. **QUIC Censorship Bypass:** Enforces UDP 443 rejection (`AND,((NETWORK,UDP),(DST-PORT,443)),REJECT`) to force instantaneous TCP fallback, preventing ISP UDP-throttling.
+### Which Script Should You Choose?
+1. **[`clash-verge-merge-Macro.js`](./clash-verge-merge-Macro.js) (Recommended for Mobile & Low-RAM Devices):**
+   * Uses consolidated bundles for both Iran (`iran-all-*`) and HaGeZi (`HageziSecurityAll`, `HageziSecurityIP`, `HageziContentAll`).
+   * Reduces the total rule-providers from 25+ down to just 6, cutting RAM usage by ~60% and eliminating startup lag.
+2. **[`clash-verge-merge-IranMacro.js`](./clash-verge-merge-IranMacro.js) (Best for Desktop Power Users):**
+   * Uses all-in-one sets for Iranian traffic, while allowing you to hand-pick granular HaGeZi components (specific OEM trackers, specific TIF feeds, etc.).
+3. **[`clash-verge-merge-modular.js`](./clash-verge-merge-modular.js) (Best for Precise Traffic Control):**
+   * Features independent switches for every Iranian category (`ENABLE_MODULAR_BANKING`, `ENABLE_MODULAR_GOV`, `ENABLE_MODULAR_MEDIA`, `ENABLE_MODULAR_GAMING`, etc.).
 
 ---
 
@@ -324,8 +328,17 @@ The automated pipeline (`build.py`) aggregates telemetry from authorized registr
 ## 🇮🇷 راهنمای جامع به زبان فارسی
 
 <details>
-<summary><b>برای مطالعه نکات تخصصی، نحوه پالایش داده و خطاهای متداول کلیک کنید</b></summary>
+<summary><b>برای مطالعه نکات تخصصی، تفاوت ۳ اسکریپت و نحوه اجرا کلیک کنید</b></summary>
 <br>
+
+### راهنمای انتخاب بین ۳ اسکریپت موجود در مخزن:
+در ریشه پروژه، سه اسکریپت آماده جاوااسکریپت برای کلش‌ورج قرار داده شده است:
+1. **`clash-verge-merge-Macro.js` (پیشنهادی برای موبایل):**  
+   سبک‌ترین حالت ممکن؛ هم ترافیک ایران و هم پکیج‌های هاگزی را به‌صورت ماکروهای تجمیعی لود می‌کند تا مصرف رم گوشی به حداقل برسد.
+2. **`clash-verge-merge-IranMacro.js` (پیشنهادی برای سیستم‌های قوی):**  
+   ترافیک ایران به‌صورت ماکرو و یکپارچه است، اما گزینه‌های هاگزی به‌صورت تک‌به‌تک و ماژولار قابل انتخاب هستند.
+3. **`clash-verge-merge-modular.js` (کنترل پیشرفته):**  
+   تمامی دسته‌بندی‌های ایران (بانک، رسانه، دولت، بازی و دانلود) دارای کلیدهای مستقل هستند.
 
 ### چرا دامنه‌ها با Mozilla PSL پالایش می‌شوند؟
 در وب‌سایت‌های ایرانی پسوندهای مرتبه دوم زیادی نظیر `.co.ir`، `.gov.ir`، `.ac.ir` و `.sch.ir` وجود دارد. اسکریپت‌های سنتی معمولاً بخش آخر دامنه‌ها را جدا می‌کنند و با دامنه‌هایی مثل `ir` یا `co.ir` رفتار یک دامنه مستقل را انجام می‌دهند که باعث اختلال می‌شود.  
@@ -339,8 +352,8 @@ The automated pipeline (`build.py`) aggregates telemetry from authorized registr
 ### نحوه استفاده از اسکریپت‌های ادغام در Clash Verge Rev
 1. وارد نرم‌افزار **Clash Verge Rev** شوید.
 2. به بخش **Profiles** رفته و روی پروفایل اشتراک فعال خود راست‌کلیک کرده و گزینه **Edit Rules** یا **Merge Scripts** را باز کنید.
-3. کد یکی از دو فایل `clash-verge-merge-macro.js` (رویکرد یکپارچه) یا `clash-verge-merge-modular.js` (رویکرد تفکیکی) را کپی کرده و در تب مربوطه جای‌گذاری کنید.
-4. تنظیمات دلخواه مسدودسازی (نظیر HaGeZi یا ترکرهای OEM) را در بالای کد تغییر داده و تغییرات را ذخیره نمایید.
+3. کد یکی از سه فایل اسکریپت بالا را کپی کرده و در تب مربوطه جای‌گذاری کنید.
+4. تنظیمات دلخواه مسدودسازی را در بالای کد تغییر داده و تغییرات را ذخیره نمایید.
 
 </details>
 
