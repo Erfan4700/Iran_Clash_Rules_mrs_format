@@ -128,6 +128,7 @@ jobs:
           RELEASE_TITLE="Universal Iran Ruleset Suite (Updated: $NOW)"
           RELEASE_NOTES="Automated Clean Build (Zero Duplicates / Zero Loss):
           ★ Macro All-In-One: iran-all-domains, iran-all-ip, iran-all-ads, iran-all-security, iran-all-apps
+          ★ Dynamic Exceptions: iran-app-exceptions (Snapp, Tapsi, Metrix & Analytics bypass)
           ★ Modular Disjoint: iran-modular-banking, iran-modular-gov, iran-modular-media, iran-modular-gaming, iran-modular-download, iran-modular-isp, iran-modular-cloud, iran-modular-gambling, iran-modular-other
           ★ Standard Formats: Mihomo (.mrs), Sing-box (.srs / .json), V2Ray/Xray (.dat), Surge (.list), Classical (.yaml / .txt)
           Last synced: $NOW"
