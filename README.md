@@ -10,7 +10,7 @@
 [![Security Specs](https://img.shields.io/badge/Security-Phishing%20%7C%20AdBlock%20%7C%20Zero--Trust-emerald?style=flat-square&logo=shield&logoColor=white)](#-cyber-threat-mitigation--whitelist-integrity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
-An industrial-grade routing engine and cyber defense framework compiled natively into optimized binary and classical text rule-sets across **Mihomo (`.mrs`)**, **Sing-box (`.srs`)**, **V2Ray/Xray (`.dat`)**, and **Surge/Shadowrocket (`.list`)**. Powered by prefix-level CIDR mathematical supernetting, Mozilla PSL root pruning, strictly disjoint modular categorization, and ready-to-use **Macro**, **IranMacro**, and **Modular** Clash Verge JavaScript processors.
+An industrial-grade routing engine and cyber defense framework compiled natively into optimized binary and classical text rule-sets across **Mihomo (`.mrs`)**, **Sing-box (`.srs`)**, **V2Ray/Xray (`.dat`)**, and **Surge/Shadowrocket (`.list`)**. Powered by prefix-level CIDR mathematical supernetting, Mozilla PSL root pruning, strictly disjoint modular categorization, dynamic app tracker exceptions, and ready-to-use **Macro**, **IranMacro**, and **Modular** Clash Verge JavaScript processors.
 
 [Architecture](#-macro-vs-modular-architectural-taxonomy) • [Merge Scripts](#-clash-verge-merge-scripts-javascript-runtime) • [Catalog & Endpoints](#-ruleset-catalog--distribution-endpoints) • [Client Setup](#-client--platform-integration) • [Telemetry Sources](#-telemetry-sources--upstream-feeds) • [راهنمای جامع فارسی](#-راهنمای-جامع-به-زبان-فارسی)
 
@@ -39,12 +39,13 @@ Users and network administrators can select between two architectural designs ta
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                  1. MACRO SUITE (Comprehensive All-In-One)                            │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ • Designed for simplicity and zero-configuration bypass.                                               │
+│ • Designed for simplicity, maximum speed, and zero-configuration domestic bypass.                      │
 │ • iran-all-domains       : 100% of verified domestic domains consolidated into a single dataset.        │
 │ • iran-all-ip            : Full aggregated RIPE IPv4/IPv6 country delegations.                         │
 │ • iran-all-ads           : Unified domestic banner, SDK, and tracker blocking feed.                   │
 │ • iran-all-security      : Domestic phishing, banking trojans, and smishing portals.                   │
 │ • iran-all-apps          : Native Android package names and desktop process names.                     │
+│ • iran-app-exceptions    : Dedicated classical ruleset allowing domestic app analytics (Metrix, etc.). │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
                                                    VS
@@ -83,22 +84,18 @@ This repository includes **three specialized production-hardened JavaScript merg
 └── clash-verge-merge-modular.js     # [Full Granular] Per-category toggles for Iran (Banking, Media, Gov, etc.)
 ```
 
-### Which Script Should You Choose?
-1. **[`clash-verge-merge-Macro.js`](./clash-verge-merge-Macro.js) (Recommended for Mobile & Low-RAM Devices):**
-   * Uses consolidated bundles for both Iran (`iran-all-*`) and HaGeZi (`HageziSecurityAll`, `HageziSecurityIP`, `HageziContentAll`).
-   * Reduces the total rule-providers from 25+ down to just 6, cutting RAM usage by ~60% and eliminating startup lag.
-2. **[`clash-verge-merge-IranMacro.js`](./clash-verge-merge-IranMacro.js) (Best for Desktop Power Users):**
-   * Uses all-in-one sets for Iranian traffic, while allowing you to hand-pick granular HaGeZi components (specific OEM trackers, specific TIF feeds, etc.).
-3. **[`clash-verge-merge-modular.js`](./clash-verge-merge-modular.js) (Best for Precise Traffic Control):**
-   * Features independent switches for every Iranian category (`ENABLE_MODULAR_BANKING`, `ENABLE_MODULAR_GOV`, `ENABLE_MODULAR_MEDIA`, `ENABLE_MODULAR_GAMING`, etc.).
+### Key Architectural Upgrades in Runtime Processors:
+* **Offloaded Static Evaluation:** All 28 essential Iranian infrastructure domains (Aparat, Filimo, Snapp, Rubika, BluBank, etc.) are permanently pre-compiled into `iran-all-domains.mrs`, removing heavy loops and string allocations from client JavaScript runtimes.
+* **Emergency Slot (`EMERGENCY_MANUAL_DOMAINS`):** A dedicated, zero-delay array at the top of the scripts allowing users to unblock any newly launched or unindexed domestic domain immediately without waiting for pipeline builds.
+* **Decoupled Tracker Routing (`iran-app-exceptions`):** Analytics endpoints utilized by essential domestic transport services (Metrix SDK used by Snapp, Tapsi, SnappFood) are dynamically routed via clean classical rulesets, eliminating ride-hailing crashes when domestic adblockers are active.
 
 ---
 
 ## 🛡️ Cyber Threat Mitigation & Whitelist Integrity
 
 * **Targeted Threat Elimination (`iran-all-security` & `iran-all-security-ip`):** Intercepts cloned phishing portals mimicking judiciary services (`sana` / `adliran`), fraudulent subsidy pages, card-to-card traps, and malicious C2 IPs.
-* **Deterministic Financial Protection (`UNBREAK_WHITELIST`):** Enforces an immutable exemption layer during Python compilation (`build.py`) for central payment infrastructure (`*.shaparak.ir`), all licensed Payment Service Providers (Behpardakht, Sadad, Asan Pardakht, Saman Kish, Parsian, ZarinPal, etc.), core Iranian banks, and critical SMS notification endpoints (`kavenegar.com`, `ghasedak.me`). Legitimate payment callbacks are guaranteed never to drop.
-* **Ad & Telemetry Suppression (`iran-all-ads`):** Neutralizes domestic mobile ad SDKs, banner trackers, and analytics telemetry without breaking host applications.
+* **Deterministic Financial Protection (`UNBREAK_WHITELIST`):** Enforces an immutable exemption layer during Python compilation (`build.py`) for central payment infrastructure (`*.shaparak.ir`), all licensed Payment Service Providers (Behpardakht, Sadad, Asan Pardakht, Saman Kish, Parsian, ZarinPal, etc.), core Iranian banks, crypto platforms (Nobitex, Wallex), and critical SMS notification endpoints (`kavenegar.com`, `ghasedak.me`).
+* **App Tracker Unbreaking (`iran-app-exceptions`):** Prevents service disruptions in domestic transportation and food delivery applications by selectively bypassing Metrix telemetry trackers for authenticated Android packages.
 * **Domestic Betting & Casino Blocking (`iran-modular-gambling`):** Blocks domestic gambling portals and illegal payment routing scripts.
 
 ---
@@ -114,7 +111,7 @@ To prevent build failures, cache corruption, or upstream network disruptions dur
 
 ## 📦 Ruleset Catalog & Distribution Endpoints
 
-All 89 release assets are rebuilt automatically twice daily (03:00 and 15:00 UTC) and distributed via both zero-cache GitHub direct links and purged jsDelivr edge mirrors:
+All release assets are rebuilt automatically twice daily (03:00 and 15:00 UTC) via parallelized compilation and distributed via both zero-cache GitHub direct links and purged jsDelivr edge mirrors:
 
 * **Direct GitHub Releases URL (Recommended - Real-time & Zero Cache Lag):**  
   `https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/`
@@ -130,6 +127,7 @@ All 89 release assets are rebuilt automatically twice daily (03:00 and 15:00 UTC
 | **`iran-all-ads`** | Domestic ad servers, SDKs, and trackers | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-ads.list) |
 | **`iran-all-security`** | Phishing portals, fake banks, and malware | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security.list) |
 | **`iran-all-security-ip`**| Malicious IP addresses, C2 nodes, and bots | `REJECT` | [mrs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.mrs) \| [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.txt) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.json) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-security-ip.list) |
+| **`iran-app-exceptions`** | Tracker exceptions for Snapp/Tapsi/Metrix | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-app-exceptions.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-app-exceptions.yaml) |
 | **`iran-all-apps`** | Android package IDs & Windows processes | `DIRECT` | [srs](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.srs) \| [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.yaml) \| [json](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-all-apps.json) |
 | **`iran-asn`** | Autonomous System Numbers of Iranian ISPs | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-asn.yaml) |
 | **`iran-unified`** | Single classical master file for legacy clients | `DIRECT` | [txt](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.txt) \| [yaml](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.yaml) \| [list](https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-unified.list) |
@@ -156,10 +154,18 @@ All 89 release assets are rebuilt automatically twice daily (03:00 and 15:00 UTC
 
 ## 🚀 Client & Platform Integration
 
-### 1. Mihomo / Clash Meta (`config.yaml`) - Modular Setup
+### 1. Mihomo / Clash Meta (`config.yaml`) - Production Ready Setup
 
 ```yaml
 rule-providers:
+  iran-app-exceptions:
+    type: http
+    behavior: classical
+    format: text
+    url: "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/iran-app-exceptions.txt"
+    path: ./ruleset/iran-app-exceptions.txt
+    interval: 172800
+
   iran-all-security:
     type: http
     behavior: domain
@@ -203,6 +209,7 @@ rule-providers:
 rules:
   - GEOIP,private,DIRECT,no-resolve
   - AND,((NETWORK,UDP),(DST-PORT,443)),REJECT
+  - RULE-SET,iran-app-exceptions,DIRECT
   - RULE-SET,iran-all-security,REJECT
   - RULE-SET,iran-all-ads,REJECT
   - DOMAIN-SUFFIX,ir,DIRECT
@@ -339,6 +346,13 @@ The automated pipeline (`build.py`) aggregates telemetry from authorized registr
    ترافیک ایران به‌صورت ماکرو و یکپارچه است، اما گزینه‌های هاگزی به‌صورت تک‌به‌تک و ماژولار قابل انتخاب هستند.
 3. **`clash-verge-merge-modular.js` (کنترل پیشرفته):**  
    تمامی دسته‌بندی‌های ایران (بانک، رسانه، دولت، بازی و دانلود) دارای کلیدهای مستقل هستند.
+
+### چرا تپسی، اسنپ و اسنپ‌فود با ادبلاکرها به مشکل نمی‌خورند؟
+بسیاری از اپلیکیشن‌های سفارش غذا و تاکسی اینترنتی از SDKهای تحلیلی مثل `metrix.ir` استفاده می‌کنند. در بلاک‌لیست‌های تبلیغاتی معمولاً کل دامنه‌ی متریکس مسدود می‌شود که منجر به اختلال یا گیر کردن در صفحه لودینگ اسنپ و تپسی می‌گردد.  
+در این پروژه یک رول‌ست اختصاصی به نام **`iran-app-exceptions`** طراحی شده که **قبل از قوانین ادبلاکر** لود می‌شود و بررسی می‌کند که اگر پکت از سمت اپلیکیشن‌های رسمی نظیر `cab.snapp.passenger` یا `taxi.tapsi.passenger` به سمت متریکس ارسال شد، بلافاصله مستقیم (`DIRECT`) شود و سایر ترافیک‌های تبلیغاتی متفرقه مسدود بماند.
+
+### دامنه‌های روز مبادا (`EMERGENCY_MANUAL_DOMAINS`):
+تمام دامنه‌های کلیدی (بانک‌ها، ثبت اسناد، آپارات، فیلیمو و...) مستقیماً در سورس پایتون کامپایل شده‌اند تا کلاینت وقت خود را تلف نکند. با این وجود، در بالای هر سه اسکریپت جاوااسکریپت آرایه‌ای به نام `EMERGENCY_MANUAL_DOMAINS` تعبیه شده است تا اگر سایت داخلی جدیدی نیاز به تفکیک فوری داشت، بدون منتظر ماندن برای بیلد جدید گیت‌هاب، بتوانید آن را مستقیماً وارد کنید.
 
 ### چرا دامنه‌ها با Mozilla PSL پالایش می‌شوند؟
 در وب‌سایت‌های ایرانی پسوندهای مرتبه دوم زیادی نظیر `.co.ir`، `.gov.ir`، `.ac.ir` و `.sch.ir` وجود دارد. اسکریپت‌های سنتی معمولاً بخش آخر دامنه‌ها را جدا می‌کنند و با دامنه‌هایی مثل `ir` یا `co.ir` رفتار یک دامنه مستقل را انجام می‌دهند که باعث اختلال می‌شود.  
