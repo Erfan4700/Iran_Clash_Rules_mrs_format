@@ -19,7 +19,7 @@ const ENABLE_ANTI_PIRACY = false;        // [Optional | Standalone] Blocks torre
 // --- NATIVE OEM & APP TRACKERS (Device Specific - Lightweight 2KB to 4KB each) ---
 // Enable ONLY the brands you or your network devices actually use to prevent RAM bloat:
 const ENABLE_TRACKER_SAMSUNG = false;     // Samsung OneUI telemetry
-const ENABLE_TRACKER_MICROSOFT = true;   // Windows diagnostic & Cortana telemetry
+const ENABLE_TRACKER_MICROSOFT = true;  // Windows diagnostic & Cortana telemetry
 const ENABLE_TRACKER_XIAOMI = false;     // Xiaomi & HyperOS tracking
 const ENABLE_TRACKER_APPLE = false;      // Apple telemetry (Keep false if using iCloud Relay)
 const ENABLE_TRACKER_HUAWEI = false;     // Huawei telemetry
@@ -38,7 +38,7 @@ const ENABLE_IRAN_DIRECT = true;         // Master Switch for Domestic Direct Ro
 const ENABLE_IRAN_SECURITY = true;       // Iran Phishing, Fake Gateways & Threat IPs
 const ENABLE_IRAN_ADS = true;            // Iran Ads & Trackers
 
-const SECURITY_INTERVAL = 48 * 3600;     
+const SECURITY_INTERVAL = 36 * 3600;     
 const STANDARD_INTERVAL = 72 * 3600;     
 
 // ==============================================================================
@@ -127,7 +127,7 @@ function makeProvider(name, behavior, format, url, interval) {
 }
 
 function resolvePrimaryProxyGroup(groups) {
-  if (!Array.isArray(groups) || groups.length === 0) return "PROXY";
+  if (!Array.isArray(groups) || groups.length === 0) return "PROXIES";
 
   let matchedSelectGroup = null;
   let fallbackAutoGroup = null;
@@ -147,7 +147,7 @@ function resolvePrimaryProxyGroup(groups) {
     }
   }
 
-  return matchedSelectGroup ?? fallbackAutoGroup ?? groups[0]?.name ?? "PROXY";
+  return matchedSelectGroup ?? fallbackAutoGroup ?? groups[0]?.name ?? "PROXIES";
 }
 
 // ==============================================================================
@@ -155,6 +155,62 @@ function resolvePrimaryProxyGroup(groups) {
 // ==============================================================================
 
 function main(config, profileName) {
+  // --------------------------------------------------------------------------
+  // [FIX 1]: Normalize proxy configurations (Strip info nodes & cast string ports)
+  // --------------------------------------------------------------------------
+  if (Array.isArray(config.proxies)) {
+    // Filter out non-functional metadata/informational nodes (traffic balance, expiry, etc.)
+    config.proxies = config.proxies.filter(p => {
+      if (!p || !p.name) return false;
+      return !/(مشخصات|باقی مانده|مصرف|trial|expire|traffic)/i.test(p.name);
+    });
+
+    for (let i = 0, len = config.proxies.length; i < len; i++) {
+      const p = config.proxies[i];
+      if (!p) continue;
+
+      // Fix string-typed ports to prevent parser crashes on strict core releases
+      if (typeof p.port === "string") {
+        p.port = parseInt(p.port, 10);
+      }
+
+      if (p.tls || p["reality-opts"] || p.type === "vless" || p.type === "trojan" || p.type === "hysteria2") {
+        p["client-fingerprint"] ??= "chrome";
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // [FIX 2]: Auto-generate Proxy Groups if the profile input is empty or raw
+  // --------------------------------------------------------------------------
+  const validProxyNames = Array.isArray(config.proxies) && config.proxies.length > 0
+    ? config.proxies.map(p => p.name)
+    : ["DIRECT"];
+
+  if (!Array.isArray(config["proxy-groups"]) || config["proxy-groups"].length === 0) {
+    config["proxy-groups"] = [
+      {
+        name: "PROXIES",
+        type: "select",
+        proxies: ["AUTO", ...validProxyNames]
+      },
+      {
+        name: "AUTO",
+        type: "url-test",
+        url: "http://www.gstatic.com/generate_204",
+        interval: 300,
+        tolerance: 50,
+        proxies: [...validProxyNames]
+      }
+    ];
+  } else {
+    // If the group exists but contains no proxies, link all validated nodes
+    const primary = config["proxy-groups"][0];
+    if (primary && Array.isArray(primary.proxies) && primary.proxies.length === 0) {
+      primary.proxies = validProxyNames;
+    }
+  }
+
   const defaultProxyGroup = resolvePrimaryProxyGroup(config["proxy-groups"]);
 
   config["tcp-concurrent"] = true;
@@ -162,15 +218,6 @@ function main(config, profileName) {
   config["find-process-mode"] = "strict";
 
   delete config["global-client-fingerprint"];
-
-  if (Array.isArray(config.proxies)) {
-    for (let i = 0, len = config.proxies.length; i < len; i++) {
-      const p = config.proxies[i];
-      if (p && (p.tls || p["reality-opts"] || p.type === "vless" || p.type === "trojan" || p.type === "hysteria2")) {
-        p["client-fingerprint"] ??= "chrome";
-      }
-    }
-  }
 
   config["geodata-mode"] = false;
   config["geo-auto-update"] = false;
@@ -358,9 +405,19 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
   
-  // Allow Metrix ONLY for Snapp Passenger app
+  // --- SPECIAL APP EXCEPTIONS (Metrix Analytics Bypass) ---
+  // Snapp (Passenger & Driver)
   ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
-  
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.driver)),DIRECT");
+
+  // SnappFood Standalone App (Bazaar & Play Store packages)
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android)),DIRECT");
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android.play)),DIRECT");
+
+  // TAPSI (Passenger & Driver)
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.passenger)),DIRECT");
+  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.driver)),DIRECT");
+
   // 6. Base Adblocking & Telemetry
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
   if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-all-ads,REJECT");
