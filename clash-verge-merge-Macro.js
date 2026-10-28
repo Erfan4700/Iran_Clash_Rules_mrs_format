@@ -45,7 +45,7 @@ const STANDARD_INTERVAL = 72 * 3600;
 // 1. DATASETS & REPOSITORIES (DIRECT GITHUB RELEASES)
 // ==============================================================================
 
-const IRAN_RULES_BASE_URL = "https://github.com/Erfan4700/iran-routing-rules/releases/latest/download/";
+const IRAN_RULES_BASE_URL = "https://github.com/Erfan4700/iran-routing-rules/releases/download/latest/";
 const HAGEZI_RAW_URL = "https://github.com/Erfan4700/HaGeZi_BlockLists_Compiled_format/releases/download/latest/";
 
 const HAGEZI_TIERS_MAP = Object.freeze({
