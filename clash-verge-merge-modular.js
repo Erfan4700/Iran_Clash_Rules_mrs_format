@@ -467,7 +467,7 @@ function main(config, profileName) {
     providers["hagezi-native-lg"] = makeProvider("HageziNativeLGWebOS", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeLGWebOS.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_TRACKER_ROKU) {
-    providers["hagezi-native-roku"] = makeProvider("HageziNativeroku", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeRoku.mrs`, STANDARD_INTERVAL);
+    providers["hagezi-native-roku"] = makeProvider("HageziNativeRoku", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeRoku.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_TRACKER_TIKTOK) {
     providers["hagezi-native-tiktok"] = makeProvider("HageziNativeTikTok", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeTikTok.mrs`, STANDARD_INTERVAL);
