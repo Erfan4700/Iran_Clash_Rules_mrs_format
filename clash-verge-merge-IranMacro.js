@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL (Modular Architecture)
+// 0. USER CONTROL PANEL (Iran's Modular Architecture)
 // ==============================================================================
 
 // --- CORE SYSTEM SWITCHES ---
@@ -38,7 +38,7 @@ const ENABLE_TRACKER_SAMSUNG = true;    // [Optional] Samsung OneUI analytics & 
 const ENABLE_TRACKER_APPLE = false;     // [Optional] Apple analytics (Keep false if you use iCloud private relay)
 const ENABLE_TRACKER_MICROSOFT = true;  // [Optional] Windows diagnostic, Cortana & Office telemetry
 const ENABLE_TRACKER_HUAWEI = false;    // [Optional] Huawei device telemetry
-const ENABLE_TRACKER_BBK = false;       // [Optional] Oppo / Realme / Vivo tracking
+const ENABLE_TRACKER_BBK = false;        // [Optional] Oppo / Realme / Vivo tracking
 const ENABLE_TRACKER_AMAZON = false;    // [Optional] Amazon Echo, Alexa, & FireTV tracking
 const ENABLE_TRACKER_LG = false;        // [Optional] LG Smart TV (webOS) analytics & ACR advertising
 const ENABLE_TRACKER_ROKU = false;      // [Optional] Roku streaming media tracking
@@ -94,6 +94,24 @@ const MANUAL_DOMAINS = Object.freeze([
 ]);
 
 const MANUAL_WILDCARDS = Object.freeze(MANUAL_DOMAINS.map(d => `+.${d}`));
+
+// --- MODULAR TRACKER & ANALYTICS EXCEPTIONS ---
+// Maps target tracker domains to allowed native/emulator client processes
+const DOMAIN_APP_EXCEPTIONS = Object.freeze({
+  "metrix.ir": Object.freeze([
+    // Snapp (Passenger & Driver)
+    "cab.snapp.passenger",
+    "cab.snapp.driver",
+    // SnappFood (Bazaar & Play Store builds)
+    "com.zoodfood.android",
+    "com.zoodfood.android.play",
+    // TAPSI (Passenger & Driver)
+    "taxi.tapsi.passenger",
+    "taxi.tapsi.driver"
+  ])
+  // Extensible for future tracker bypasses, e.g.:
+  // "pushe.co": Object.freeze(["com.example.app"])
+});
 
 const FROZEN_HOSTS = Object.freeze({
   "forcesafesearch.google.com": "216.239.38.120",
@@ -187,9 +205,12 @@ function main(config, profileName) {
       const p = config.proxies[i];
       if (!p) continue;
 
-      // Fix string-typed ports to prevent parser crashes on strict core releases
+      // Robust port validation: convert string to integer and ensure a valid port range
       if (typeof p.port === "string") {
-        p.port = parseInt(p.port, 10);
+        const parsed = parseInt(p.port, 10);
+        if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 65535) {
+          p.port = parsed;
+        }
       }
 
       if (p.tls || p["reality-opts"] || p.type === "vless" || p.type === "trojan" || p.type === "hysteria2") {
@@ -503,18 +524,12 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
 
-  // --- SPECIAL APP EXCEPTIONS (Metrix Analytics Bypass) ---
-  // Snapp (Passenger & Driver)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.driver)),DIRECT");
-
-  // SnappFood Standalone App (Bazaar & Play Store packages)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android.play)),DIRECT");
-
-  // TAPSI (Passenger & Driver)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.passenger)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.driver)),DIRECT");
+  // --- SPECIAL APP EXCEPTIONS (Selective Direct Routing for Trackers) ---
+  for (const [domain, apps] of Object.entries(DOMAIN_APP_EXCEPTIONS)) {
+    for (let i = 0, len = apps.length; i < len; i++) {
+      ruleSet.add(`AND,((DOMAIN-SUFFIX,${domain}),(PROCESS-NAME,${apps[i]})),DIRECT`);
+    }
+  }
 
   // 6. General Ads & Base Trackers
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
