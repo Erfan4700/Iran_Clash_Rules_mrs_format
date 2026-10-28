@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL (Smart Macro Architecture)
+// 0. USER CONTROL PANEL (Macro Architecture)
 // ==============================================================================
 
 const ENABLE_SAFE_SEARCH = false;       // [Optional] Enforce SafeSearch
@@ -65,35 +65,19 @@ const DIRECT_KEYWORD_REGEX = /direct/i;
 const IP_RULE_PREFIX_REGEX = /^(?:GEOIP|IP-CIDR|IP-CIDR6|IP-ASN),/i;
 const NO_RESOLVE_REGEX = /,\s*no-resolve(?:\s*#.*)?$/i;
 
-const MANUAL_DOMAINS = Object.freeze([
-  "aparat.com", "filimo.com", "telewebion.com", "varzesh3.com",
-  "neshan.org", "rajman.org", "cedarmaps.com", "snapp.cab", "snapp.tax",
-  "snappcloud.io", "snapp.supply", "tapsi.cab", "tap33.me", "taximaxim.com",
-  "torob.com", "divarcdn.com", "digikala.com", "digikalacloud.com",
-  "dl150m.info", "dl175m.info", "linkulu.com", "film2media.cam",
-  "zarinpal.com", "zarin.link", "payping.net", "ramzinex.com", "abantether.com",
-  "nobitex.net", "exir.io", "wallex.net"
+// ------------------------------------------------------------------------------
+// بخش دامنه‌های دستی (روز مبادا)
+// نکته: تمام ۲۸ دامنه مرجع (آپارات، فیلیمو، اسنپ، روبیکا و...) به موتور پایتون منتقل شده
+// و در رول‌ست باینری O(1) پردازش می‌شوند. اگر سایت جدیدی مد نظرتان بود که هنوز
+// در بیلد آپدیت نشده، کافیست آن را در آرایه زیر بنویسید:
+// ------------------------------------------------------------------------------
+const EMERGENCY_MANUAL_DOMAINS = Object.freeze([
+  // مثال:
+  // "custom-local-bank.com",
+  // "my-internal-service.ir"
 ]);
 
-const MANUAL_WILDCARDS = Object.freeze(MANUAL_DOMAINS.map(d => `+.${d}`));
-
-// --- MODULAR TRACKER & ANALYTICS EXCEPTIONS ---
-// Maps target tracker domains to allowed native/emulator client processes
-const DOMAIN_APP_EXCEPTIONS = Object.freeze({
-  "metrix.ir": Object.freeze([
-    // Snapp (Passenger & Driver)
-    "cab.snapp.passenger",
-    "cab.snapp.driver",
-    // SnappFood (Bazaar & Play Store builds)
-    "com.zoodfood.android",
-    "com.zoodfood.android.play",
-    // TAPSI (Passenger & Driver)
-    "taxi.tapsi.passenger",
-    "taxi.tapsi.driver"
-  ])
-  // Extensible for future tracker bypasses, e.g.:
-  // "pushe.co": Object.freeze(["com.example.app"])
-});
+const EMERGENCY_WILDCARDS = Object.freeze(EMERGENCY_MANUAL_DOMAINS.map(d => `+.${d}`));
 
 const FROZEN_HOSTS = Object.freeze({
   "forcesafesearch.google.com": "216.239.38.120",
@@ -139,7 +123,7 @@ function makeProvider(name, behavior, format, url, interval) {
     behavior: behavior,
     format: format,
     url: url,
-    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : "txt"}`,
+    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : (format === "yaml" ? "yaml" : "txt")}`,
     interval: interval
   };
 }
@@ -268,7 +252,7 @@ function main(config, profileName) {
     "skip-domain": [
       "Mijia Cloud", "+.push.apple.com", "+.apple.com",
       "+.lan", "+.local", "+.home.arpa", "+.ir",
-      ...MANUAL_WILDCARDS
+      ...EMERGENCY_WILDCARDS
     ]
   };
 
@@ -295,7 +279,7 @@ function main(config, profileName) {
 
   const fakeIpList = [
     "+.ir",
-    ...MANUAL_WILDCARDS,
+    ...EMERGENCY_WILDCARDS,
     "+.lan", "+.local", "+.home.arpa",
     "captive.apple.com", "+.connectivitycheck.gstatic.com",
     "detectportal.firefox.com", "+.msftconnecttest.com", "+.msftncsi.com",
@@ -320,8 +304,8 @@ function main(config, profileName) {
   if (ENABLE_IRAN_DIRECT) {
     nsPolicy["rule-set:iran-all-domains"] = PURE_DOMESTIC_RESOLVERS;
   }
-  for (let i = 0; i < MANUAL_DOMAINS.length; i++) {
-    nsPolicy[`+.${MANUAL_DOMAINS[i]}`] = PURE_DOMESTIC_RESOLVERS;
+  for (let i = 0; i < EMERGENCY_MANUAL_DOMAINS.length; i++) {
+    nsPolicy[`+.${EMERGENCY_MANUAL_DOMAINS[i]}`] = PURE_DOMESTIC_RESOLVERS;
   }
   dns["nameserver-policy"] = Object.assign(dns["nameserver-policy"] ?? {}, nsPolicy);
 
@@ -369,7 +353,7 @@ function main(config, profileName) {
     if (ENABLE_TRACKER_TIKTOK_EXT) providers["hagezi-native-tiktok-ext"] = makeProvider("HageziNativeTikTokExtended", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeTikTokExtended.mrs`, STANDARD_INTERVAL);
   }
 
-  // 5. Iran Core Macro Suite
+  // 5. Iran Core Macro Suite & Dynamic Exceptions
   if (ENABLE_IRAN_SECURITY) {
     providers["iran-all-security"] = makeProvider("iran-all-security", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security.mrs`, SECURITY_INTERVAL);
     providers["iran-all-security-ip"] = makeProvider("iran-all-security-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-security-ip.mrs`, SECURITY_INTERVAL);
@@ -378,6 +362,8 @@ function main(config, profileName) {
     providers["iran-all-ads"] = makeProvider("iran-all-ads", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ads.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_IRAN_DIRECT) {
+    // استثنائات تحلیلی برنامه‌ها (پیکربندی‌شده در پایتون بدون خطا)
+    providers["iran-app-exceptions"] = makeProvider("iran-app-exceptions", "classical", "text", `${IRAN_RULES_BASE_URL}iran-app-exceptions.txt`, STANDARD_INTERVAL);
     providers["iran-all-domains"] = makeProvider("iran-all-domains", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-domains.mrs`, STANDARD_INTERVAL);
     providers["iran-all-ip"] = makeProvider("iran-all-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ip.mrs`, STANDARD_INTERVAL);
     providers["iran-all-apps"] = makeProvider("iran-all-apps", "classical", "text", `${IRAN_RULES_BASE_URL}iran-all-apps.txt`, STANDARD_INTERVAL);
@@ -391,17 +377,9 @@ function main(config, profileName) {
   // ============================================================================
   const ruleSet = new Set();
 
-  // 1. Local Network & Private IP Bypass
-  ruleSet.add("DST-PORT,7275,DIRECT");
+  // 1. Local Network & Private IP Bypass (پوشش کامل RFC1918 توسط رول پیش‌فرض هسته)
   ruleSet.add("GEOIP,private,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,127.0.0.0/8,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,10.0.0.0/8,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,172.16.0.0/12,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,192.168.0.0/16,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR6,fc00::/7,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR6,fe80::/10,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,224.0.0.0/4,DIRECT,no-resolve");
-  ruleSet.add("IP-CIDR,255.255.255.255/32,DIRECT,no-resolve");
+  ruleSet.add("DST-PORT,7275,DIRECT");
 
   // Torrents
   ruleSet.add("DST-PORT,6881-6889,DIRECT");
@@ -426,18 +404,19 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
   
-  // --- SPECIAL APP EXCEPTIONS (Selective Direct Routing for Trackers) ---
-  for (const [domain, apps] of Object.entries(DOMAIN_APP_EXCEPTIONS)) {
-    for (let i = 0, len = apps.length; i < len; i++) {
-      ruleSet.add(`AND,((DOMAIN-SUFFIX,${domain}),(PROCESS-NAME,${apps[i]})),DIRECT`);
-    }
+  // --------------------------------------------------------------------------
+  // 6. SPECIAL APP EXCEPTIONS (بسیار مهم: قبل از مسدودسازی تبلیغات)
+  // متریکس برای اسنپ، تپسی و اسنپ‌فود بدون بلاک شدن مجاز می‌شود
+  // --------------------------------------------------------------------------
+  if (ENABLE_IRAN_DIRECT) {
+    ruleSet.add("RULE-SET,iran-app-exceptions,DIRECT");
   }
 
-  // 6. Base Adblocking & Telemetry
+  // 7. Base Adblocking & Telemetry
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
   if (ENABLE_IRAN_ADS) ruleSet.add("RULE-SET,iran-all-ads,REJECT");
 
-  // 7. Native OEM Trackers Routing
+  // 8. Native OEM Trackers Routing
   if (ENABLE_TRACKER_ALL_OEM) {
     ruleSet.add("RULE-SET,hagezi-native-all,REJECT");
   } else {
@@ -454,17 +433,17 @@ function main(config, profileName) {
     if (ENABLE_TRACKER_TIKTOK_EXT) ruleSet.add("RULE-SET,hagezi-native-tiktok-ext,REJECT");
   }
   
-  // 8. Special Domain Overrides
+  // 9. Special Domain Overrides
   ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
   ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
 
-  // 9. Manual Zero-Delay Domestic Whitelist
-  for (let i = 0; i < MANUAL_DOMAINS.length; i++) {
-    ruleSet.add(`DOMAIN-SUFFIX,${MANUAL_DOMAINS[i]},DIRECT`);
+  // 10. Manual Zero-Delay Domestic Whitelist (دامنه‌های روز مبادا در صورت پر بودن لیست)
+  for (let i = 0; i < EMERGENCY_MANUAL_DOMAINS.length; i++) {
+    ruleSet.add(`DOMAIN-SUFFIX,${EMERGENCY_MANUAL_DOMAINS[i]},DIRECT`);
   }
   ruleSet.add("DOMAIN-SUFFIX,ir,DIRECT");
 
-  // 10. Iran Macro Direct Routing
+  // 11. Iran Macro Direct Routing (رول‌ست‌های فوق سریع کامپایل‌شده)
   if (ENABLE_IRAN_DIRECT) {
     ruleSet.add("RULE-SET,iran-all-apps,DIRECT,no-resolve");
     ruleSet.add("RULE-SET,iran-all-domains,DIRECT");
@@ -472,7 +451,7 @@ function main(config, profileName) {
     ruleSet.add("RULE-SET,iran-asn,DIRECT,no-resolve");
   }
 
-  // 11. Integration of Existing Profile Rules
+  // 12. Integration of Existing Profile Rules
   const rawRules = config.rules;
   let capturedMatchRule = null;
 
@@ -498,7 +477,7 @@ function main(config, profileName) {
     }
   }
 
-  // 12. Final Fallback Catch-All
+  // 13. Final Fallback Catch-All
   ruleSet.add(capturedMatchRule ?? `MATCH,${defaultProxyGroup}`);
   config.rules = Array.from(ruleSet);
 
