@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL (Iran's Modular Architecture)
+// 0. USER CONTROL PANEL (Iran's Macro Architecture)
 // ==============================================================================
 
 // --- CORE SYSTEM SWITCHES ---
