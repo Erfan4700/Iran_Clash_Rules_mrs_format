@@ -105,6 +105,24 @@ const MANUAL_DOMAINS = Object.freeze([
 
 const MANUAL_WILDCARDS = Object.freeze(MANUAL_DOMAINS.map(d => `+.${d}`));
 
+// --- MODULAR TRACKER & ANALYTICS EXCEPTIONS ---
+// Maps target tracker domains to allowed native/emulator client processes
+const DOMAIN_APP_EXCEPTIONS = Object.freeze({
+  "metrix.ir": Object.freeze([
+    // Snapp (Passenger & Driver)
+    "cab.snapp.passenger",
+    "cab.snapp.driver",
+    // SnappFood (Bazaar & Play Store builds)
+    "com.zoodfood.android",
+    "com.zoodfood.android.play",
+    // TAPSI (Passenger & Driver)
+    "taxi.tapsi.passenger",
+    "taxi.tapsi.driver"
+  ])
+  // Extensible for future tracker bypasses, e.g.:
+  // "pushe.co": Object.freeze(["com.example.app"])
+});
+
 const FROZEN_HOSTS = Object.freeze({
   "forcesafesearch.google.com": "216.239.38.120",
   "www.google.com": "216.239.38.120",
@@ -197,9 +215,12 @@ function main(config, profileName) {
       const p = config.proxies[i];
       if (!p) continue;
 
-      // Fix string-typed ports to prevent parser crashes on strict core releases
+      // Robust port validation: convert string to integer and ensure a valid port range
       if (typeof p.port === "string") {
-        p.port = parseInt(p.port, 10);
+        const parsed = parseInt(p.port, 10);
+        if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 65535) {
+          p.port = parsed;
+        }
       }
 
       if (p.tls || p["reality-opts"] || p.type === "vless" || p.type === "trojan" || p.type === "hysteria2") {
@@ -446,7 +467,7 @@ function main(config, profileName) {
     providers["hagezi-native-lg"] = makeProvider("HageziNativeLGWebOS", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeLGWebOS.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_TRACKER_ROKU) {
-    providers["hagezi-native-roku"] = makeProvider("HageziNativeRoku", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeRoku.mrs`, STANDARD_INTERVAL);
+    providers["hagezi-native-roku"] = makeProvider("HageziNativeroku", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeRoku.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_TRACKER_TIKTOK) {
     providers["hagezi-native-tiktok"] = makeProvider("HageziNativeTikTok", "domain", "mrs", `${HAGEZI_RAW_URL}HageziNativeTikTok.mrs`, STANDARD_INTERVAL);
@@ -560,18 +581,12 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
 
-  // --- SPECIAL APP EXCEPTIONS (Metrix Analytics Bypass) ---
-  // Snapp (Passenger & Driver)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.passenger)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,cab.snapp.driver)),DIRECT");
-
-  // SnappFood Standalone App (Bazaar & Play Store packages)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,com.zoodfood.android.play)),DIRECT");
-
-  // TAPSI (Passenger & Driver)
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.passenger)),DIRECT");
-  ruleSet.add("AND,((DOMAIN-SUFFIX,metrix.ir),(PROCESS-NAME,taxi.tapsi.driver)),DIRECT");
+  // --- SPECIAL APP EXCEPTIONS (Selective Direct Routing for Trackers) ---
+  for (const [domain, apps] of Object.entries(DOMAIN_APP_EXCEPTIONS)) {
+    for (let i = 0, len = apps.length; i < len; i++) {
+      ruleSet.add(`AND,((DOMAIN-SUFFIX,${domain}),(PROCESS-NAME,${apps[i]})),DIRECT`);
+    }
+  }
 
   // 6. General Ads & Base Trackers
   ruleSet.add("RULE-SET,hagezi-main,REJECT");
