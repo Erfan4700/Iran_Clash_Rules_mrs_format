@@ -57,23 +57,26 @@ HEADERS = {"User-Agent": USER_AGENT}
 UNBREAK_WHITELIST = {
     # PSPs & Payment Gateways
     "shaparak.ir", "asanpardakht.ir", "sadadpsp.ir", "behpardakht.com",
-    "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "zarinpal.ir",
+    "sepehrpay.com", "sep.ir", "pec.ir", "zarinpal.com", "zarinpal.ir", "zarin.link",
     "payping.net", "payping.ir", "idpay.ir", "jibit.ir", "nextpay.ir",
     "vandar.ir", "zibal.ir", "rayanpay.com", "fanavakart.ir", "sayancard.ir",
     "pasargad-psp.ir", "pep.co.ir", "pna.co.ir",
-    # Core Banking & Regulators
+    # Core Banking & Crypto Exchanges
     "cbi.ir", "bmi.ir", "bankmellat.ir", "mellatbank.ir", "tejaratbank.ir",
     "bsi.ir", "bpi.ir", "sb24.ir", "sb24.com", "parsian-bank.ir",
     "banksepah.ir", "refah-bank.ir", "keshavarzi-bank.ir", "maskan-bank.ir",
-    "blubank.com", "blubank.sb24.com",
-    # Essential Domestic Infra & Platforms
+    "blubank.com", "blubank.sb24.com", "nobitex.net", "nobitex.ir", "wallex.net",
+    "wallex.ir", "abantether.com", "ramzinex.com", "exir.io",
+    # Essential Domestic Infra & Platforms (Transferred from JS manual list)
     "sana.gov.ir", "adliran.ir", "divar.ir", "divarcdn.com", "torob.com",
     "digikala.com", "digikalacloud.com", "snapp.ir", "snapp.cab", "snapp.tech",
-    "snappcloud.io", "tapsi.ir", "tapsi.cab", "kavenegar.com", "ghasedak.me",
-    "raychat.io", "bale.ai", "eitaa.com", "eitaa.ir", "rubika.ir", "rubikacdn.ir",
-    "soroushplus.ir", "cafebazaar.ir", "farsitel.com", "myket.ir",
-    "neshan.org", "neshanmaps.ir", "balad.ir", "aparat.com", "telewebion.com",
-    "mci.ir", "mtnirancell.ir", "rightel.ir", "tamin.ir"
+    "snappcloud.io", "snapp.tax", "snapp.supply", "tapsi.ir", "tapsi.cab", "tap33.me",
+    "taximaxim.com", "kavenegar.com", "ghasedak.me", "raychat.io", "bale.ai",
+    "eitaa.com", "eitaa.ir", "rubika.ir", "rubikacdn.ir", "soroushplus.ir",
+    "cafebazaar.ir", "farsitel.com", "myket.ir", "neshan.org", "neshanmaps.ir",
+    "balad.ir", "rajman.org", "cedarmaps.com", "aparat.com", "telewebion.com",
+    "filimo.com", "varzesh3.com", "mci.ir", "mtnirancell.ir", "rightel.ir", "tamin.ir",
+    "dl150m.info", "dl175m.info", "linkulu.com", "film2media.cam"
 }
 
 def is_whitelisted(domain: str) -> bool:
@@ -214,43 +217,35 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
     return collapsed_v4, collapsed_v6
 
 # ==============================================================================
-# MULTI-PLATFORM EXPORTERS (CLEAN ARCHITECTURE: 1 CANONICAL TARGET)
+# MULTI-PLATFORM EXPORTERS
 # ==============================================================================
 def export_domain_target(name: str, domains: Set[str]):
     """Exports a single unique domain ruleset across all platform formats."""
     sorted_domains = sorted(domains)
-    # Text
     with open(TEXT_DIR / f"{name}.txt", "w", encoding="utf-8") as f:
         for d in sorted_domains:
             f.write(f"{d}\n")
-    # Surge List
     with open(TEXT_DIR / f"{name}.list", "w", encoding="utf-8") as f:
         for d in sorted_domains:
             f.write(f"DOMAIN-SUFFIX,{d}\n")
-    # Sing-box JSON
     data = {"version": 1, "rules": [{"domain_suffix": sorted_domains}]}
     with open(TEXT_DIR / f"{name}.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    # V2Ray Tag
     with open(V2RAY_GEOSITE_DIR / name, "w", encoding="utf-8") as f:
         for d in sorted_domains:
             f.write(f"{d}\n")
 
 def export_ip_target(name: str, cidrs: List[str]):
     """Exports a single unique IP ruleset across all platform formats."""
-    # Text
     with open(TEXT_DIR / f"{name}.txt", "w", encoding="utf-8") as f:
         for c in cidrs:
             f.write(f"{c}\n")
-    # Surge List
     with open(TEXT_DIR / f"{name}.list", "w", encoding="utf-8") as f:
         for c in cidrs:
             f.write(f"IP-CIDR,{c},no-resolve\n")
-    # Sing-box JSON
     data = {"version": 1, "rules": [{"ip_cidr": cidrs}]}
     with open(TEXT_DIR / f"{name}.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
-    # V2Ray GeoIP data file
     with open(V2RAY_GEOIP_DIR / name, "w", encoding="utf-8") as f:
         for c in cidrs:
             f.write(f"{c}\n")
@@ -287,9 +282,9 @@ def main():
     print("=" * 82)
 
     # --------------------------------------------------------------------------
-    # 1. IP & ASN PROCESSING (TELCO / ISP EXTRACTION)
+    # 1. IP & ASN PROCESSING
     # --------------------------------------------------------------------------
-    print("\n[+] 1/8: Processing Iranian IP Ranges & ASN Infrastructure...")
+    print("\n[+] 1/9: Processing Iranian IP Ranges & ASN Infrastructure...")
     ripe_raw = fetch_data([
         "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-latest",
         "https://ftp.apnic.net/stats/ripe-ncc/delegated-ripencc-latest"
@@ -347,12 +342,10 @@ def main():
     else:
         save_baseline("iran-asn", asns)
 
-    # Supernet Telco/ISP IP ranges
     isp_v4, isp_v6 = collapse_cidrs(raw_ip_list)
     isp_cidrs = [str(n) for n in (isp_v4 + isp_v6)]
     export_ip_target("iran-modular-isp", isp_cidrs)
 
-    # Export ASN assets
     with open(TEXT_DIR / "iran-asn.txt", "w", encoding="utf-8") as f:
         for asn in sorted(asns):
             f.write(f"{asn}\n")
@@ -367,7 +360,7 @@ def main():
     # --------------------------------------------------------------------------
     # 2. DOMESTIC CLOUDS & MACRO ALL-IP
     # --------------------------------------------------------------------------
-    print("\n[+] 2/8: Generating 'iran-modular-cloud' & Macro 'iran-all-ip'...")
+    print("\n[+] 2/9: Generating 'iran-modular-cloud' & Macro 'iran-all-ip'...")
     cloud_sources = ["arvancloud", "derakcloud", "iranserver", "parspack"]
     raw_cloud_cidrs = []
     for cname in cloud_sources:
@@ -378,29 +371,22 @@ def main():
     all_cloud_cidrs = [str(n) for n in (cloud_v4 + cloud_v6)]
     export_ip_target("iran-modular-cloud", all_cloud_cidrs)
 
-    # MACRO ALL-IP: Supernet combination of all ISP/Telephony + Domestic Clouds
     macro_v4, macro_v6 = collapse_cidrs(raw_ip_list + raw_cloud_cidrs)
     master_all_cidrs = [str(n) for n in (macro_v4 + macro_v6)]
     export_ip_target("iran-all-ip", master_all_cidrs)
 
-    # Standard GeoIP compatibility tag for official V2Ray/Xray compilers
     with open(V2RAY_GEOIP_DIR / "ir", "w", encoding="utf-8") as f:
         for c in master_all_cidrs:
             f.write(f"{c}\n")
 
     print(f"  [✓] Modular: 'iran-modular-cloud' ({len(all_cloud_cidrs)} CIDRs)")
-    print(f"  [★] MACRO:   'iran-all-ip' ({len(master_all_cidrs)} collapsed CIDRs - 100% complete)")
+    print(f"  [★] MACRO:   'iran-all-ip' ({len(master_all_cidrs)} collapsed CIDRs)")
 
     # --------------------------------------------------------------------------
     # 3. MASTER IRANIAN DOMAINS (MACRO ALL-DOMAINS)
     # --------------------------------------------------------------------------
-    print("\n[+] 3/8: Aggregating & Pruning Master Domestic Domains...")
-    raw_iran_domains = {
-        "digikala.com", "torob.com", "divar.ir", "snapp.ir", "snapp.cab", "tapsi.cab",
-        "neshan.org", "balad.ir", "bale.ai", "eitaa.com", "rubika.ir", "shaparak.ir",
-        "asanpardakht.ir", "zarinpal.com", "aparat.com", "telewebion.com", "varzesh3.com"
-    }
-
+    print("\n[+] 3/9: Aggregating & Pruning Master Domestic Domains...")
+    raw_iran_domains = set(UNBREAK_WHITELIST)
     raw_iran_domains.update(load_baseline("iran-domains"))
 
     domain_upstreams = [
@@ -427,12 +413,10 @@ def main():
 
     export_domain_target("iran-all-domains", pruned_iran_domains)
 
-    # Standard Geosite compatibility tag for official V2Ray/Xray compilers
     with open(V2RAY_GEOSITE_DIR / "ir", "w", encoding="utf-8") as f:
         for d in sorted(pruned_iran_domains):
             f.write(f"{d}\n")
 
-    # Lite version
     ir_lite_raw = fetch_data("https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir-lite.txt", timeout=30)
     lite_domains = set()
     for line in ir_lite_raw.splitlines():
@@ -442,12 +426,12 @@ def main():
     pruned_lite = prune_subdomains(lite_domains if len(lite_domains) > 100 else pruned_iran_domains)
     export_domain_target("iran-all-domains-lite", pruned_lite)
 
-    print(f"  [★] MACRO: 'iran-all-domains' ({len(pruned_iran_domains)} root domains preserved with 0% data loss)")
+    print(f"  [★] MACRO: 'iran-all-domains' ({len(pruned_iran_domains)} root domains preserved with 0% loss)")
 
     # --------------------------------------------------------------------------
     # 4. GRANULAR DISJOINT MODULES (ZERO LOSS GUARANTEED)
     # --------------------------------------------------------------------------
-    print("\n[+] 4/8: Partitioning Master Domains into Disjoint Modular Sets...")
+    print("\n[+] 4/9: Partitioning Master Domains into Disjoint Modular Sets...")
 
     MEDIA_PATTERNS = re.compile(r"(?:aparat|filimo|namava|filmnet|telewebion|gapfilm|cinematicket|tiwall|tamasha|namasha|antenn|lenz|mayaa|irib|seevid|ammarfilm|radio|video|music|tv|vod|stream)")
     BANKING_PATTERNS = re.compile(r"(?:bank|shaparak|sadad|mellat|melli|tejarat|saderat|pasargad|sb24|blubank|sepah|refah|keshavarzi|maskan|postbank|zarinpal|payping|idpay|jibit|nextpay|vandar|zibal|nobitex|wallex|bitpin|ramzinex|abantether|exir|bourse|seham|tsetmc|codal|emofid|agah|fipiran)")
@@ -473,7 +457,6 @@ def main():
         elif DOWNLOAD_PATTERNS.search(d):
             download_domains.add(d)
 
-    # Disjoint remainder guarantees that (Submodules Union == Master) with ZERO loss
     categorized_union = banking_domains | gov_domains | media_domains | gaming_domains | download_domains
     other_domains = pruned_iran_domains - categorized_union
 
@@ -484,19 +467,13 @@ def main():
     export_domain_target("iran-modular-download", download_domains)
     export_domain_target("iran-modular-other", other_domains)
 
-    print(f"  [✓] iran-modular-banking:  {len(banking_domains)} domains")
-    print(f"  [✓] iran-modular-gov:      {len(gov_domains)} domains")
-    print(f"  [✓] iran-modular-media:    {len(media_domains)} domains")
-    print(f"  [✓] iran-modular-gaming:   {len(gaming_domains)} domains")
-    print(f"  [✓] iran-modular-download: {len(download_domains)} domains")
-    print(f"  [✓] iran-modular-other:    {len(other_domains)} domains")
     assert (len(categorized_union) + len(other_domains)) == len(pruned_iran_domains), "Data integrity check failed!"
-    print(f"  [✓] Math Verification: Submodules Sum == Master ({len(pruned_iran_domains)}) [VERIFIED OK]")
+    print(f"  [✓] Disjoint math check passed: Submodules == Master ({len(pruned_iran_domains)})")
 
     # --------------------------------------------------------------------------
     # 5. PERSIAN ADS & TRACKERS (MACRO)
     # --------------------------------------------------------------------------
-    print("\n[+] 5/8: Compiling Macro 'iran-all-ads' (Zero-Trust Protected)...")
+    print("\n[+] 5/9: Compiling Macro 'iran-all-ads' (Zero-Trust Protected)...")
     ads_sources = [
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt",
@@ -518,7 +495,7 @@ def main():
     # --------------------------------------------------------------------------
     # 6. UNIFIED SECURITY (PHISHING + MALWARE MACRO)
     # --------------------------------------------------------------------------
-    print("\n[+] 6/8: Compiling Macro Security ('iran-all-security' & 'iran-all-security-ip')...")
+    print("\n[+] 6/9: Compiling Macro Security ('iran-all-security' & 'iran-all-security-ip')...")
     DOMESTIC_THREAT_REGEX = re.compile(
         r"(?:^|[.-])(?:shaparak|sana[-_.]?gov|adliran|divar|sadad|"
         r"mellat|melli|tejarat|saderat|pasargad|blubank|keshavarzi|refah|maskan|"
@@ -563,7 +540,7 @@ def main():
     # --------------------------------------------------------------------------
     # 7. DOMESTIC GAMBLING & BETTING (MODULAR)
     # --------------------------------------------------------------------------
-    print("\n[+] 7/8: Compiling 'iran-modular-gambling'...")
+    print("\n[+] 7/9: Compiling 'iran-modular-gambling'...")
     gambling_sources = [
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt",
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/nsfw.txt"
@@ -581,9 +558,37 @@ def main():
     print(f"  [✓] Modular: 'iran-modular-gambling' ({len(pruned_gambling)} domains)")
 
     # --------------------------------------------------------------------------
-    # 8. APPS & UNIFIED CLASSICAL
+    # 8. APP EXCEPTIONS, APPS & UNIFIED CLASSICAL
     # --------------------------------------------------------------------------
-    print("\n[+] 8/8: Compiling 'iran-all-apps' & Unified Classical Rules...")
+    print("\n[+] 8/9: Compiling App Rules & Dynamic Tracker Exceptions...")
+
+    # A) Dynamic Classical Exceptions (Metrix & Domestic trackers)
+    EXCEPTIONS_MAP = {
+        "metrix.ir": [
+            "cab.snapp.passenger", "cab.snapp.driver",
+            "com.zoodfood.android", "com.zoodfood.android.play",
+            "taxi.tapsi.passenger", "taxi.tapsi.driver"
+        ]
+    }
+    
+    classical_exception_lines = []
+    for domain, apps in EXCEPTIONS_MAP.items():
+        for app in apps:
+            classical_exception_lines.append(f"AND,((DOMAIN-SUFFIX,{domain}),(PROCESS-NAME,{app}))")
+            classical_exception_lines.append(f"AND,((DOMAIN-SUFFIX,{domain}),(PACKAGE-NAME,{app}))")
+
+    with open(TEXT_DIR / "iran-app-exceptions.txt", "w", encoding="utf-8") as f:
+        for r in classical_exception_lines:
+            f.write(f"{r}\n")
+
+    with open(TEXT_DIR / "iran-app-exceptions.yaml", "w", encoding="utf-8") as f:
+        f.write("payload:\n")
+        for r in classical_exception_lines:
+            f.write(f"  - '{r}'\n")
+
+    print(f"  [✓] Classical Exceptions: 'iran-app-exceptions' ({len(classical_exception_lines)} rules)")
+
+    # B) Android Packages & Windows Processes
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -625,7 +630,6 @@ def main():
                 PKG_REGEX.match(pkg) and len(pkg) < 85):
                 compiled_packages.add(pkg)
 
-    # Save iran-all-apps
     with open(TEXT_DIR / "iran-all-apps.txt", "w", encoding="utf-8") as f:
         for pkg in sorted(compiled_packages):
             f.write(f"PACKAGE-NAME,{pkg}\n")
@@ -643,7 +647,7 @@ def main():
     with open(TEXT_DIR / "iran-all-apps.json", "w", encoding="utf-8") as f:
         json.dump(data_apps, f, indent=2, ensure_ascii=False)
 
-    # Unified Classical (All Domains + All IPs)
+    # C) Unified Classical Rules (All Domains + All IPs)
     classical_rules = ["GEOIP,ir", "DOMAIN-SUFFIX,ir"]
     non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
     for d in sorted(non_ir):
@@ -675,9 +679,10 @@ def main():
     # 9. DUAL COMPILATION (MIHOMO .MRS & SING-BOX .SRS)
     # --------------------------------------------------------------------------
     print("\n" + "=" * 82)
-    print("⚙️ DUAL COMPILATION: MIHOMO (MRS) & SING-BOX (SRS) - CLEAN ASSETS ONLY")
+    print("⚙️ 9/9: DUAL COMPILATION (MIHOMO .MRS & SING-BOX .SRS)")
     print("=" * 82)
 
+    # Sync all generated files to MRS_DIR for packaging/distribution
     for f in TEXT_DIR.glob("*.*"):
         if f.is_file():
             shutil.copy(f, MRS_DIR / f.name)
@@ -687,9 +692,7 @@ def main():
         print(f"[+] Mihomo Core Active: {mihomo_bin}")
 
         domain_targets = [
-            # Macro
             "iran-all-domains", "iran-all-domains-lite", "iran-all-ads", "iran-all-security",
-            # Modular
             "iran-modular-banking", "iran-modular-gov", "iran-modular-media",
             "iran-modular-gaming", "iran-modular-download", "iran-modular-other",
             "iran-modular-gambling"
@@ -717,10 +720,8 @@ def main():
     if singbox_bin and os.path.exists(singbox_bin):
         print(f"\n[+] Sing-box Core Active: {singbox_bin}")
         srs_targets = [
-            # Macro
             "iran-all-domains", "iran-all-domains-lite", "iran-all-ip", "iran-all-ads",
             "iran-all-security", "iran-all-security-ip", "iran-all-apps",
-            # Modular
             "iran-modular-banking", "iran-modular-gov", "iran-modular-media",
             "iran-modular-gaming", "iran-modular-download", "iran-modular-other",
             "iran-modular-isp", "iran-modular-cloud", "iran-modular-gambling"
