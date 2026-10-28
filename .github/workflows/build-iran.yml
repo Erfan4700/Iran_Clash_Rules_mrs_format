@@ -33,37 +33,42 @@ jobs:
         run: |
           pip install --no-cache-dir tldextract
 
-      - name: Install & Setup Mihomo Core
+      - name: Install & Setup Mihomo and Sing-box Cores in Parallel
         run: |
-          echo "Fetching latest official Mihomo release binary..."
-          MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
-            jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
+          echo "Fetching and setting up Mihomo and Sing-box in parallel..."
 
-          if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+          (
             MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
-              jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
-          fi
+              jq -r '.assets[] | select(.name | test("^mihomo-linux-amd64-(compatible-)?v.*\\.gz$")) | .browser_download_url' | head -n 1)
 
-          curl -sSL "$MIHOMO_URL" -o mihomo.gz
-          gzip -d -f mihomo.gz
-          chmod +x mihomo
-          sudo mv mihomo /usr/local/bin/
+            if [ -z "$MIHOMO_URL" ] || [ "$MIHOMO_URL" = "null" ]; then
+              MIHOMO_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | \
+                jq -r '.assets[] | select(.name | test("mihomo-linux-amd64.*\\.gz$")) | .browser_download_url' | head -n 1)
+            fi
+
+            curl -sSL "$MIHOMO_URL" -o mihomo.gz
+            gzip -d -f mihomo.gz
+            chmod +x mihomo
+            sudo mv mihomo /usr/local/bin/
+          ) &
+
+          (
+            SINGBOX_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              https://api.github.com/repos/SagerNet/sing-box/releases/latest | \
+              jq -r '.assets[] | select(.name | test("sing-box-.*-linux-amd64\\.tar\\.gz$")) | .browser_download_url' | head -n 1)
+
+            curl -sSL "$SINGBOX_URL" -o sing-box.tar.gz
+            tar -xzf sing-box.tar.gz
+            mv sing-box-*/sing-box ./sing-box
+            chmod +x sing-box
+            sudo mv sing-box /usr/local/bin/
+          ) &
+
+          wait
+
           mihomo -v
-
-      - name: Install & Setup Sing-box Core
-        run: |
-          echo "Fetching latest official Sing-box release binary..."
-          SINGBOX_URL=$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            https://api.github.com/repos/SagerNet/sing-box/releases/latest | \
-            jq -r '.assets[] | select(.name | test("sing-box-.*-linux-amd64\\.tar\\.gz$")) | .browser_download_url' | head -n 1)
-
-          curl -sSL "$SINGBOX_URL" -o sing-box.tar.gz
-          tar -xzf sing-box.tar.gz
-          mv sing-box-*/sing-box ./sing-box
-          chmod +x sing-box
-          sudo mv sing-box /usr/local/bin/
           sing-box version
 
       - name: Run Clean Hybrid Engine (Macro & Modular)
@@ -72,22 +77,28 @@ jobs:
         run: |
           python build.py
 
-      - name: Compile V2Ray / Xray Official Protobuf Binary DATs
+      - name: Compile V2Ray / Xray Official Protobuf Binary DATs in Parallel
         run: |
-          echo "=== 1. Compiling geosite.dat & iran.dat with official v2fly DLC ==="
-          git clone --depth=1 https://github.com/v2fly/domain-list-community.git dlc-builder
-          cd dlc-builder
-          go run ./ --datapath=../output_text/v2ray_geosite --outputname=geosite.dat --outputdir=../output_mrs/
-          cd ..
-          cp output_mrs/geosite.dat output_mrs/iran.dat
+          echo "=== Compiling geosite.dat and geoip.dat in parallel ==="
 
-          echo "=== 2. Compiling geoip.dat with official v2fly GeoIP ==="
-          git clone --depth=1 https://github.com/v2fly/geoip.git geoip-builder
-          cd geoip-builder
-          go run ./ -c ../output_text/v2ray_geoip_config.json
-          cd ..
+          (
+            git clone --depth=1 https://github.com/v2fly/domain-list-community.git dlc-builder
+            cd dlc-builder
+            go run ./ --datapath=../output_text/v2ray_geosite --outputname=geosite.dat --outputdir=../output_mrs/
+            cd ..
+            cp output_mrs/geosite.dat output_mrs/iran.dat
+          ) &
 
-          echo "=== 3. Cleaning Temporary Builder Cache ==="
+          (
+            git clone --depth=1 https://github.com/v2fly/geoip.git geoip-builder
+            cd geoip-builder
+            go run ./ -c ../output_text/v2ray_geoip_config.json
+            cd ..
+          ) &
+
+          wait
+
+          echo "=== Cleaning Temporary Builder Cache ==="
           rm -rf dlc-builder geoip-builder output_mrs/v2ray_geoip_config.json output_mrs/.tld_cache
 
       - name: Commit & Push Updated Baseline (Layer 2 Resilience)
@@ -155,13 +166,23 @@ jobs:
           echo "Waiting 25 seconds for GitHub RAW storage & Release branch propagation..."
           sleep 25
 
-          echo "=== Dynamically Purging ALL Generated Artifacts from jsDelivr ==="
+          echo "=== Dynamically Purging ALL Generated Artifacts from jsDelivr in Parallel ==="
+          PARALLEL_JOBS=$(nproc || echo 4)
+          echo "Running with $PARALLEL_JOBS parallel purge workers..."
+
           for FILE_PATH in output_mrs/*; do
             if [ -f "$FILE_PATH" ]; then
-              FILE_NAME=$(basename "$FILE_PATH")
-              echo -n "Purging jsDelivr for $FILE_NAME: "
-              RESPONSE=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE_NAME}")
-              STATUS=$(echo "$RESPONSE" | jq -r .status 2>/dev/null || echo "ok")
-              echo "$STATUS"
+              (
+                FILE_NAME=$(basename "$FILE_PATH")
+                RESPONSE=$(curl -s "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${FILE_NAME}")
+                STATUS=$(echo "$RESPONSE" | jq -r .status 2>/dev/null || echo "ok")
+                echo "Purged $FILE_NAME: $STATUS"
+              ) &
+
+              while [ $(jobs -r -p | wc -l) -ge $PARALLEL_JOBS ]; do
+                sleep 0.1
+              done
             fi
           done
+
+          wait
