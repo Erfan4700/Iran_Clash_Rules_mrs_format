@@ -542,7 +542,6 @@ def main():
     # --------------------------------------------------------------------------
     print("\n[+] 7/9: Compiling 'iran-modular-gambling'...")
     gambling_sources = [
-        "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerGambling.txt",
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/nsfw.txt"
     ]
     raw_gambling = {"betcart.com", "takbet.com", "wolfbet.info", "cannonbet.org", "hazarat.org"}
