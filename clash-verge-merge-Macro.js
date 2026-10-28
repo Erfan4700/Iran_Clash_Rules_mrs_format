@@ -356,7 +356,6 @@ function main(config, profileName) {
     providers["iran-all-ads"] = makeProvider("iran-all-ads", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ads.mrs`, STANDARD_INTERVAL);
   }
   if (ENABLE_IRAN_DIRECT) {
-    // استثنائات تحلیلی برنامه‌ها (پیکربندی‌شده در پایتون بدون خطا)
     providers["iran-app-exceptions"] = makeProvider("iran-app-exceptions", "classical", "text", `${IRAN_RULES_BASE_URL}iran-app-exceptions.txt`, STANDARD_INTERVAL);
     providers["iran-all-domains"] = makeProvider("iran-all-domains", "domain", "mrs", `${IRAN_RULES_BASE_URL}iran-all-domains.mrs`, STANDARD_INTERVAL);
     providers["iran-all-ip"] = makeProvider("iran-all-ip", "ipcidr", "mrs", `${IRAN_RULES_BASE_URL}iran-all-ip.mrs`, STANDARD_INTERVAL);
@@ -371,7 +370,7 @@ function main(config, profileName) {
   // ============================================================================
   const ruleSet = new Set();
 
-  // 1. Local Network & Private IP Bypass (پوشش کامل RFC1918 توسط رول پیش‌فرض هسته)
+  // 1. Local Network & Private IP Bypass
   ruleSet.add("GEOIP,private,DIRECT,no-resolve");
   ruleSet.add("DST-PORT,7275,DIRECT");
 
@@ -398,10 +397,7 @@ function main(config, profileName) {
   // 5. Standalone Anti-Piracy
   if (ENABLE_ANTI_PIRACY) ruleSet.add("RULE-SET,hagezi-antipiracy,REJECT");
   
-  // --------------------------------------------------------------------------
-  // 6. SPECIAL APP EXCEPTIONS (بسیار مهم: قبل از مسدودسازی تبلیغات)
-  // متریکس برای اسنپ، تپسی و اسنپ‌فود بدون بلاک شدن مجاز می‌شود
-  // --------------------------------------------------------------------------
+  // 6. SPECIAL APP EXCEPTIONS
   if (ENABLE_IRAN_DIRECT) {
     ruleSet.add("RULE-SET,iran-app-exceptions,DIRECT");
   }
@@ -431,13 +427,13 @@ function main(config, profileName) {
   ruleSet.add(`DOMAIN-SUFFIX,waze.com,${defaultProxyGroup}`);
   ruleSet.add(`DOMAIN-KEYWORD,waze,${defaultProxyGroup}`);
 
-  // 10. Manual Zero-Delay Domestic Whitelist (دامنه‌های روز مبادا در صورت پر بودن لیست)
+  // 10. Manual Zero-Delay Domestic Whitelist
   for (let i = 0; i < EMERGENCY_MANUAL_DOMAINS.length; i++) {
     ruleSet.add(`DOMAIN-SUFFIX,${EMERGENCY_MANUAL_DOMAINS[i]},DIRECT`);
   }
   ruleSet.add("DOMAIN-SUFFIX,ir,DIRECT");
 
-  // 11. Iran Macro Direct Routing (رول‌ست‌های فوق سریع کامپایل‌شده)
+  // 11. Iran Macro Direct Routing
   if (ENABLE_IRAN_DIRECT) {
     ruleSet.add("RULE-SET,iran-all-apps,DIRECT,no-resolve");
     ruleSet.add("RULE-SET,iran-all-domains,DIRECT");
