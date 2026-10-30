@@ -67,7 +67,7 @@ UNBREAK_WHITELIST = {
     "banksepah.ir", "refah-bank.ir", "keshavarzi-bank.ir", "maskan-bank.ir",
     "blubank.com", "blubank.sb24.com", "nobitex.net", "nobitex.ir", "wallex.net",
     "wallex.ir", "abantether.com", "ramzinex.com", "exir.io",
-    # Essential Domestic Infra & Platforms (Transferred from JS manual list)
+    # Essential Domestic Infra & Platforms
     "sana.gov.ir", "adliran.ir", "divar.ir", "divarcdn.com", "torob.com",
     "digikala.com", "digikalacloud.com", "snapp.ir", "snapp.cab", "snapp.tech",
     "snappcloud.io", "snapp.tax", "snapp.supply", "tapsi.ir", "tapsi.cab", "tap33.me",
@@ -130,7 +130,7 @@ DOMAIN_REGEX = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,
 
 def clean_domain(line: str) -> Optional[str]:
     line = line.split("#")[0].split(";")[0].strip().lower()
-    if not line or line.startswith(("!", "//", "/*")):
+    if not line or line.startswith(("!", "//", "/*", "include:")):
         return None
 
     line = re.sub(r"^(?:domain:|full:|keyword:|regexp:|\|\|?|@@)", "", line)
@@ -138,6 +138,9 @@ def clean_domain(line: str) -> Optional[str]:
 
     parts = line.split()
     target = parts[1] if (len(parts) >= 2 and re.match(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^::[0-9a-f]?$", parts[0])) else parts[0]
+
+    # Strip v2fly attributes (e.g. @ads, @cn)
+    target = target.split("@")[0].strip()
 
     target = re.sub(r"^https?://", "", target)
     target = re.sub(r"[\^/:].*$", "", target)
@@ -220,7 +223,6 @@ def collapse_cidrs(raw_cidrs: List[str]) -> Tuple[List[ipaddress.IPv4Network], L
 # MULTI-PLATFORM EXPORTERS
 # ==============================================================================
 def export_domain_target(name: str, domains: Set[str]):
-    """Exports a single unique domain ruleset across all platform formats."""
     sorted_domains = sorted(domains)
     with open(TEXT_DIR / f"{name}.txt", "w", encoding="utf-8") as f:
         for d in sorted_domains:
@@ -236,7 +238,6 @@ def export_domain_target(name: str, domains: Set[str]):
             f.write(f"{d}\n")
 
 def export_ip_target(name: str, cidrs: List[str]):
-    """Exports a single unique IP ruleset across all platform formats."""
     with open(TEXT_DIR / f"{name}.txt", "w", encoding="utf-8") as f:
         for c in cidrs:
             f.write(f"{c}\n")
@@ -383,24 +384,34 @@ def main():
     print(f"  [★] MACRO:   'iran-all-ip' ({len(master_all_cidrs)} collapsed CIDRs)")
 
     # --------------------------------------------------------------------------
-    # 3. MASTER IRANIAN DOMAINS (MACRO ALL-DOMAINS)
+    # 3. MASTER IRANIAN DOMAINS (MACRO ALL-DOMAINS + V2FLY CATEGORIES)
     # --------------------------------------------------------------------------
     print("\n[+] 3/9: Aggregating & Pruning Master Domestic Domains...")
     raw_iran_domains = set(UNBREAK_WHITELIST)
     raw_iran_domains.update(load_baseline("iran-domains"))
 
+    # Load manual additions from custom-domains.txt
     custom_baseline_path = BASELINE_DIR / "custom-domains.txt"
+    custom_count = 0
     if custom_baseline_path.exists():
         with open(custom_baseline_path, "r", encoding="utf-8") as f:
-            custom_count = 0
             for line in f:
                 d = clean_domain(line)
                 if d:
                     raw_iran_domains.add(d)
                     custom_count += 1
-            print(f"  [✓] Loaded {custom_count} manual domain(s) from custom-domains.txt")
+        print(f"  [✓] Loaded {custom_count} manual domain(s) from custom-domains.txt")
     else:
         custom_baseline_path.touch()
+
+    # Upstream lists + v2fly direct domain categories
+    V2FLY_BASE = "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/"
+    v2fly_direct_categories = [
+        "category-ir", "category-gov-ir", "category-bank-ir", "category-news-ir",
+        "category-tech-ir", "category-media-ir", "category-bourse-ir", "category-forums-ir",
+        "category-travel-ir", "category-payment-ir", "category-scholar-ir", "category-shopping-ir",
+        "category-education-ir", "category-insurance-ir", "category-social-media-ir"
+    ]
 
     domain_upstreams = [
         "https://github.com/ygbkm/clash-rules-iran/releases/latest/download/rules.txt",
@@ -408,10 +419,18 @@ def main():
         "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/clash_rules_other.txt",
         "https://raw.githubusercontent.com/Chocolate4U/Iran-clash-rules/release/ir.txt",
         "https://raw.githubusercontent.com/bootmortis/ito-gov-mirror/main/out/domains.csv"
-    ]
+    ] + [f"{V2FLY_BASE}{cat}" for cat in v2fly_direct_categories]
+
+    v2fly_banking_seeds = set()
+    v2fly_gov_seeds = set()
+    v2fly_media_seeds = set()
 
     for url in domain_upstreams:
         content = fetch_data(url, timeout=40)
+        is_bank_src = any(k in url for k in ["category-bank-ir", "category-payment-ir", "category-bourse-ir", "category-insurance-ir"])
+        is_gov_src = "category-gov-ir" in url
+        is_media_src = any(k in url for k in ["category-media-ir", "category-news-ir"])
+
         for line in content.splitlines():
             if "," in line and not line.startswith("DOMAIN"):
                 parts = line.split(",")
@@ -420,6 +439,12 @@ def main():
             d = clean_domain(line)
             if d:
                 raw_iran_domains.add(d)
+                if is_bank_src:
+                    v2fly_banking_seeds.add(d)
+                elif is_gov_src:
+                    v2fly_gov_seeds.add(d)
+                elif is_media_src:
+                    v2fly_media_seeds.add(d)
 
     save_baseline("iran-domains", raw_iran_domains)
     pruned_iran_domains = prune_subdomains(raw_iran_domains)
@@ -436,7 +461,7 @@ def main():
         d = clean_domain(line)
         if d:
             lite_domains.add(d)
-    
+            
     if custom_baseline_path.exists():
         with open(custom_baseline_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -448,14 +473,14 @@ def main():
     export_domain_target("iran-all-domains-lite", pruned_lite)
 
     print(f"  [★] MACRO: 'iran-all-domains' ({len(pruned_iran_domains)} root domains preserved with 0% loss)")
-    
+
     # --------------------------------------------------------------------------
     # 4. GRANULAR DISJOINT MODULES (ZERO LOSS GUARANTEED)
     # --------------------------------------------------------------------------
     print("\n[+] 4/9: Partitioning Master Domains into Disjoint Modular Sets...")
 
     MEDIA_PATTERNS = re.compile(r"(?:aparat|filimo|namava|filmnet|telewebion|gapfilm|cinematicket|tiwall|tamasha|namasha|antenn|lenz|mayaa|irib|seevid|ammarfilm|radio|video|music|tv|vod|stream)")
-    BANKING_PATTERNS = re.compile(r"(?:bank|shaparak|sadad|mellat|melli|tejarat|saderat|pasargad|sb24|blubank|sepah|refah|keshavarzi|maskan|postbank|zarinpal|payping|idpay|jibit|nextpay|vandar|zibal|nobitex|wallex|bitpin|ramzinex|abantether|exir|bourse|seham|tsetmc|codal|emofid|agah|fipiran)")
+    BANKING_PATTERNS = re.compile(r"(?:bank|shaparak|sadad|mellat|melli|tejarat|saderat|pasargad|sb24|blubank|sepah|refah|keshavarzi|maskan|postbank|zarinpal|payping|idpay|jibit|nextpay|vandar|zibal|nobitex|wallex|bitpin|ramzinex|abantether|exir|bourse|seham|tsetmc|codal|emofid|agah|fipiran|bimeh|azki)")
     GOV_PATTERNS = re.compile(r"(?:\.gov\.ir$|\.jud\.ir$|\.police\.ir$|sana\.gov|adliran|my\.gov|mardom|tax\.gov|tamin|post\.ir|dolat\.ir|majlis\.ir|sabteahval|moi\.ir|medu\.ir)")
     GAMING_PATTERNS = re.compile(r"(?:gameup|shecan|electro|radar\.game|parshub|asiagame|vmp|fivem|gamefa|vgmag|zoomg|bazicenter|baziato|csgo|samp|bazi|game)")
     DOWNLOAD_PATTERNS = re.compile(r"(?:soft98|yasdl|downloadha|p30download|asandl|sarzamindownload|p30world|shahrsakhtafzar|zoomit|digiato|download|mirror|tarfandestan)")
@@ -467,11 +492,11 @@ def main():
     download_domains = set()
 
     for d in pruned_iran_domains:
-        if BANKING_PATTERNS.search(d):
+        if BANKING_PATTERNS.search(d) or d in v2fly_banking_seeds:
             banking_domains.add(d)
-        elif GOV_PATTERNS.search(d) or d.endswith(".gov.ir"):
+        elif GOV_PATTERNS.search(d) or d.endswith(".gov.ir") or d in v2fly_gov_seeds:
             gov_domains.add(d)
-        elif MEDIA_PATTERNS.search(d):
+        elif MEDIA_PATTERNS.search(d) or d in v2fly_media_seeds:
             media_domains.add(d)
         elif GAMING_PATTERNS.search(d):
             gaming_domains.add(d)
@@ -492,10 +517,11 @@ def main():
     print(f"  [✓] Disjoint math check passed: Submodules == Master ({len(pruned_iran_domains)})")
 
     # --------------------------------------------------------------------------
-    # 5. PERSIAN ADS & TRACKERS (MACRO)
+    # 5. PERSIAN ADS & TRACKERS (MACRO + V2FLY CATEGORY-ADS-IR)
     # --------------------------------------------------------------------------
     print("\n[+] 5/9: Compiling Macro 'iran-all-ads' (Zero-Trust Protected)...")
     ads_sources = [
+        f"{V2FLY_BASE}category-ads-ir",
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerHosts.txt",
         "https://raw.githubusercontent.com/MasterKia/PersianBlocker/main/PersianBlockerAds-Hosts.txt",
         "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/clash_rules_ads.txt",
@@ -582,7 +608,6 @@ def main():
     # --------------------------------------------------------------------------
     print("\n[+] 8/9: Compiling App Rules & Dynamic Tracker Exceptions...")
 
-    # A) Dynamic Classical Exceptions (Metrix & Domestic trackers)
     EXCEPTIONS_MAP = {
         "metrix.ir": [
             "cab.snapp.passenger", "cab.snapp.driver",
@@ -608,7 +633,6 @@ def main():
 
     print(f"  [✓] Classical Exceptions: 'iran-app-exceptions' ({len(classical_exception_lines)} rules)")
 
-    # B) Android Packages & Windows Processes
     ESSENTIAL_PACKAGES = {
         "cab.snapp.passenger", "cab.snapp.driver", "cab.snapp.biker", "cab.snapp.delivery",
         "taxi.tap30.passenger", "taxi.tap30.driver", "taxi.tap30.food", "com.alopeyk.customer",
@@ -667,7 +691,6 @@ def main():
     with open(TEXT_DIR / "iran-all-apps.json", "w", encoding="utf-8") as f:
         json.dump(data_apps, f, indent=2, ensure_ascii=False)
 
-    # C) Unified Classical Rules (All Domains + All IPs)
     classical_rules = ["GEOIP,ir", "DOMAIN-SUFFIX,ir"]
     non_ir = {d for d in pruned_iran_domains if not d.endswith(".ir")}
     for d in sorted(non_ir):
@@ -702,7 +725,6 @@ def main():
     print("⚙️ 9/9: DUAL COMPILATION (MIHOMO .MRS & SING-BOX .SRS)")
     print("=" * 82)
 
-    # Sync all generated files to MRS_DIR for packaging/distribution
     for f in TEXT_DIR.glob("*.*"):
         if f.is_file():
             shutil.copy(f, MRS_DIR / f.name)
