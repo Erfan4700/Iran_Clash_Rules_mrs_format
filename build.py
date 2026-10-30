@@ -389,6 +389,19 @@ def main():
     raw_iran_domains = set(UNBREAK_WHITELIST)
     raw_iran_domains.update(load_baseline("iran-domains"))
 
+    custom_baseline_path = BASELINE_DIR / "custom-domains.txt"
+    if custom_baseline_path.exists():
+        with open(custom_baseline_path, "r", encoding="utf-8") as f:
+            custom_count = 0
+            for line in f:
+                d = clean_domain(line)
+                if d:
+                    raw_iran_domains.add(d)
+                    custom_count += 1
+            print(f"  [✓] Loaded {custom_count} manual domain(s) from custom-domains.txt")
+    else:
+        custom_baseline_path.touch()
+
     domain_upstreams = [
         "https://github.com/ygbkm/clash-rules-iran/releases/latest/download/rules.txt",
         "https://raw.githubusercontent.com/bootmortis/iran-hosted-domains/release/domains.txt",
@@ -423,11 +436,19 @@ def main():
         d = clean_domain(line)
         if d:
             lite_domains.add(d)
+    
+    if custom_baseline_path.exists():
+        with open(custom_baseline_path, "r", encoding="utf-8") as f:
+            for line in f:
+                d = clean_domain(line)
+                if d:
+                    lite_domains.add(d)
+
     pruned_lite = prune_subdomains(lite_domains if len(lite_domains) > 100 else pruned_iran_domains)
     export_domain_target("iran-all-domains-lite", pruned_lite)
 
     print(f"  [★] MACRO: 'iran-all-domains' ({len(pruned_iran_domains)} root domains preserved with 0% loss)")
-
+    
     # --------------------------------------------------------------------------
     # 4. GRANULAR DISJOINT MODULES (ZERO LOSS GUARANTEED)
     # --------------------------------------------------------------------------
