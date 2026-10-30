@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 3,15 * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'data/baseline/custom-domains.txt'
+      - 'build.py'
 
 permissions:
   contents: write
