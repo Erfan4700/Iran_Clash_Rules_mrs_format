@@ -5,12 +5,15 @@
 Universal Multi-Platform Hybrid Engine (Clean Architecture - Production Ready)
 Repository: Erfan4700/iran-routing-rules
 Platforms: Mihomo (.mrs) | Sing-box (.srs / .json) | V2Ray (.dat) | Surge (.list)
+Includes: CitizenLab, V2Fly Community & Enamad Mirror Database (~13MB)
 ================================================================================
 """
 
 import os
 import re
 import sys
+import csv
+import io
 import json
 import shutil
 import subprocess
@@ -86,7 +89,7 @@ def is_whitelisted(domain: str) -> bool:
 # ==============================================================================
 # UTILITIES: FETCHING & BASELINE RESILIENCE
 # ==============================================================================
-def fetch_data(urls, timeout: int = 60, min_len: int = 20) -> str:
+def fetch_data(urls, timeout: int = 90, min_len: int = 20) -> str:
     if isinstance(urls, str):
         urls = [urls]
 
@@ -384,13 +387,13 @@ def main():
     print(f"  [★] MACRO:   'iran-all-ip' ({len(master_all_cidrs)} collapsed CIDRs)")
 
     # --------------------------------------------------------------------------
-    # 3. MASTER IRANIAN DOMAINS (MACRO ALL-DOMAINS + V2FLY CATEGORIES)
+    # 3. MASTER IRANIAN DOMAINS (MACRO + V2FLY + ENAMAD MIRROR)
     # --------------------------------------------------------------------------
     print("\n[+] 3/9: Aggregating & Pruning Master Domestic Domains...")
     raw_iran_domains = set(UNBREAK_WHITELIST)
     raw_iran_domains.update(load_baseline("iran-domains"))
 
-    # Load manual additions from custom-domains.txt
+    # A) Load manual additions from custom-domains.txt
     custom_baseline_path = BASELINE_DIR / "custom-domains.txt"
     custom_count = 0
     if custom_baseline_path.exists():
@@ -404,7 +407,7 @@ def main():
     else:
         custom_baseline_path.touch()
 
-    # Upstream lists + v2fly direct domain categories
+    # B) Upstream lists + v2fly direct domain categories
     V2FLY_BASE = "https://raw.githubusercontent.com/v2fly/domain-list-community/master/data/"
     v2fly_direct_categories = [
         "category-ir", "category-gov-ir", "category-bank-ir", "category-news-ir",
@@ -446,6 +449,32 @@ def main():
                 elif is_media_src:
                     v2fly_media_seeds.add(d)
 
+    # C) Process Enamad Mirror Database (~13MB CSV)
+    print("  [*] Fetching & Streaming Enamad Database (~13MB)...")
+    enamad_raw = fetch_data("https://raw.githubusercontent.com/bootmortis/enamad-mirror/main/out/domains.csv", timeout=120)
+    enamad_count = 0
+    if enamad_raw:
+        try:
+            reader = csv.reader(io.StringIO(enamad_raw))
+            header = next(reader, None)
+            domain_idx = 2  # Standard column index for 'domain'
+            if header:
+                for idx, col in enumerate(header):
+                    if col.strip().lower() == "domain":
+                        domain_idx = idx
+                        break
+
+            for row in reader:
+                if len(row) > domain_idx:
+                    raw_val = row[domain_idx]
+                    d = clean_domain(raw_val)
+                    if d:
+                        raw_iran_domains.add(d)
+                        enamad_count += 1
+            print(f"  [✓] Enamad Mirror: Successfully parsed {enamad_count} commercial domains.")
+        except Exception as e:
+            print(f"  [!] Warning parsing Enamad CSV: {e}")
+
     save_baseline("iran-domains", raw_iran_domains)
     pruned_iran_domains = prune_subdomains(raw_iran_domains)
 
@@ -461,7 +490,7 @@ def main():
         d = clean_domain(line)
         if d:
             lite_domains.add(d)
-            
+
     if custom_baseline_path.exists():
         with open(custom_baseline_path, "r", encoding="utf-8") as f:
             for line in f:
