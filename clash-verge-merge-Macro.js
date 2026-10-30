@@ -230,6 +230,16 @@ function main(config, profileName) {
   profile["store-fake-ip"] = true;
   profile["store-selected"] = true;
 
+  // [FIX 3]: جلوگیری از اسنیف دامنه‌های ایرانی دیتابیس جامع جهت رفع کندی و اختلال Handshake
+  const snifferSkipDomains = [
+    "Mijia Cloud", "+.push.apple.com", "+.apple.com",
+    "+.lan", "+.local", "+.home.arpa", "+.ir",
+    ...EMERGENCY_WILDCARDS
+  ];
+  if (ENABLE_IRAN_DIRECT) {
+    snifferSkipDomains.push("rule-set:iran-all-domains");
+  }
+
   config.sniffer = {
     enable: true,
     "force-dns-mapping": true,
@@ -243,11 +253,7 @@ function main(config, profileName) {
       "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
       "224.0.0.0/4", "255.255.255.255/32"
     ],
-    "skip-domain": [
-      "Mijia Cloud", "+.push.apple.com", "+.apple.com",
-      "+.lan", "+.local", "+.home.arpa", "+.ir",
-      ...EMERGENCY_WILDCARDS
-    ]
+    "skip-domain": snifferSkipDomains
   };
 
   if (ENABLE_SAFE_SEARCH) {
