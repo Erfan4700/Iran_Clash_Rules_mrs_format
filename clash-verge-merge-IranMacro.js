@@ -1,5 +1,5 @@
 // ==============================================================================
-// 0. USER CONTROL PANEL (Iran's Modular & Macro Architecture)
+// 0. USER CONTROL PANEL (Iran's Macro Architecture)
 // ==============================================================================
 
 // --- CORE SYSTEM SWITCHES ---
@@ -35,7 +35,7 @@ const ENABLE_HAGEZI_DOH_IP = false;     // [Optional | Modular] Blocks public Do
 // Note: Native lists are modular add-ons to prevent device telemetry without breaking device core features.
 const ENABLE_TRACKER_XIAOMI = false;    // [Optional] Xiaomi/HyperOS tracking & ads
 const ENABLE_TRACKER_SAMSUNG = true;    // [Optional] Samsung OneUI analytics & diagnostic services
-const ENABLE_TRACKER_APPLE = false;     // [Optional] Apple analytics (Keep false if you use iCloud private relay)
+const ENABLE_TRACKER_APPLE = false;      // [Optional] Apple analytics (Keep false if you use iCloud private relay)
 const ENABLE_TRACKER_MICROSOFT = true;  // [Optional] Windows diagnostic, Cortana & Office telemetry
 const ENABLE_TRACKER_HUAWEI = false;    // [Optional] Huawei device telemetry
 const ENABLE_TRACKER_BBK = false;        // [Optional] Oppo / Realme / Vivo tracking
@@ -133,7 +133,7 @@ function makeProvider(name, behavior, format, url, interval) {
     behavior: behavior,
     format: format,
     url: url,
-    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : "txt"}`,
+    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : (format === "yaml" ? "yaml" : "txt")}`,
     interval: interval
   };
 }
@@ -246,6 +246,16 @@ function main(config, profileName) {
   profile["store-fake-ip"] = true;
   profile["store-selected"] = true;
 
+  // [FIX 3]: بهینه‌سازی اسنیفر برای نادیده گرفتن دامنه‌های ایرانی جامع (اینماد، کلودفلر و غیره)
+  const snifferSkipDomains = [
+    "Mijia Cloud", "+.push.apple.com", "+.apple.com",
+    "+.lan", "+.local", "+.home.arpa", "+.ir",
+    ...EMERGENCY_WILDCARDS
+  ];
+  if (ENABLE_IRAN_DIRECT) {
+    snifferSkipDomains.push("rule-set:iran-all-domains");
+  }
+
   config.sniffer = {
     enable: true,
     "force-dns-mapping": true,
@@ -259,11 +269,7 @@ function main(config, profileName) {
       "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
       "224.0.0.0/4", "255.255.255.255/32"
     ],
-    "skip-domain": [
-      "Mijia Cloud", "+.push.apple.com", "+.apple.com",
-      "+.lan", "+.local", "+.home.arpa", "+.ir",
-      ...EMERGENCY_WILDCARDS
-    ]
+    "skip-domain": snifferSkipDomains
   };
 
   if (ENABLE_SAFE_SEARCH) {
