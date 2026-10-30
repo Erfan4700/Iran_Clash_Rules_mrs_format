@@ -143,7 +143,7 @@ function makeProvider(name, behavior, format, url, interval) {
     behavior: behavior,
     format: format,
     url: url,
-    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : "txt"}`,
+    path: `./ruleset/${name}.${format === "mrs" ? "mrs" : (format === "yaml" ? "yaml" : "txt")}`,
     interval: interval
   };
 }
@@ -256,6 +256,22 @@ function main(config, profileName) {
   profile["store-fake-ip"] = true;
   profile["store-selected"] = true;
 
+  // [FIX 3]: بهینه‌سازی اسنیفر برای نادیده گرفتن رول‌ست‌های دامنه‌ای ماژولار ایران
+  const snifferSkipDomains = [
+    "Mijia Cloud", "+.push.apple.com", "+.apple.com",
+    "+.lan", "+.local", "+.home.arpa", "+.ir",
+    ...EMERGENCY_WILDCARDS
+  ];
+
+  if (ENABLE_IRAN_DIRECT) {
+    if (ENABLE_MODULAR_BANKING) snifferSkipDomains.push("rule-set:iran-modular-banking");
+    if (ENABLE_MODULAR_GOV) snifferSkipDomains.push("rule-set:iran-modular-gov");
+    if (ENABLE_MODULAR_MEDIA) snifferSkipDomains.push("rule-set:iran-modular-media");
+    if (ENABLE_MODULAR_GAMING) snifferSkipDomains.push("rule-set:iran-modular-gaming");
+    if (ENABLE_MODULAR_DOWNLOAD) snifferSkipDomains.push("rule-set:iran-modular-download");
+    if (ENABLE_MODULAR_OTHER) snifferSkipDomains.push("rule-set:iran-modular-other");
+  }
+
   config.sniffer = {
     enable: true,
     "force-dns-mapping": true,
@@ -269,11 +285,7 @@ function main(config, profileName) {
       "127.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
       "224.0.0.0/4", "255.255.255.255/32"
     ],
-    "skip-domain": [
-      "Mijia Cloud", "+.push.apple.com", "+.apple.com",
-      "+.lan", "+.local", "+.home.arpa", "+.ir",
-      ...EMERGENCY_WILDCARDS
-    ]
+    "skip-domain": snifferSkipDomains
   };
 
   if (ENABLE_SAFE_SEARCH) {
