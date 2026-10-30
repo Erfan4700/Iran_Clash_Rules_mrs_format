@@ -5,7 +5,7 @@
 Universal Multi-Platform Hybrid Engine (Clean Architecture - Production Ready)
 Repository: Erfan4700/iran-routing-rules
 Platforms: Mihomo (.mrs) | Sing-box (.srs / .json) | V2Ray (.dat) | Surge (.list)
-Includes: CitizenLab, V2Fly Community & Enamad Mirror Database (~13MB)
+Includes: CitizenLab, V2Fly, Enamad Mirror & CF-Web Cloudflare Domains
 ================================================================================
 """
 
@@ -387,7 +387,7 @@ def main():
     print(f"  [★] MACRO:   'iran-all-ip' ({len(master_all_cidrs)} collapsed CIDRs)")
 
     # --------------------------------------------------------------------------
-    # 3. MASTER IRANIAN DOMAINS (MACRO + V2FLY + ENAMAD MIRROR)
+    # 3. MASTER IRANIAN DOMAINS (MACRO + V2FLY + ENAMAD + CF-WEB)
     # --------------------------------------------------------------------------
     print("\n[+] 3/9: Aggregating & Pruning Master Domestic Domains...")
     raw_iran_domains = set(UNBREAK_WHITELIST)
@@ -474,6 +474,26 @@ def main():
             print(f"  [✓] Enamad Mirror: Successfully parsed {enamad_count} commercial domains.")
         except Exception as e:
             print(f"  [!] Warning parsing Enamad CSV: {e}")
+
+    # D) Process Cloudflare Iranian Domains (CF-Web JSON)
+    print("  [*] Fetching Cloudflare Iranian Domains (CF-Web)...")
+    cf_raw = fetch_data("https://raw.githubusercontent.com/hossein-mohseni/CF-Web/main/domains.json", timeout=60)
+    cf_count = 0
+    if cf_raw:
+        try:
+            cf_json = json.loads(cf_raw)
+            items = cf_json.get("data", []) if isinstance(cf_json, dict) else cf_json
+            if isinstance(items, list):
+                for entry in items:
+                    raw_val = entry.get("domain") if isinstance(entry, dict) else entry
+                    if raw_val:
+                        d = clean_domain(str(raw_val))
+                        if d:
+                            raw_iran_domains.add(d)
+                            cf_count += 1
+            print(f"  [✓] CF-Web: Successfully parsed {cf_count} Cloudflare-fronted domestic domains.")
+        except Exception as e:
+            print(f"  [!] Warning parsing CF-Web JSON: {e}")
 
     save_baseline("iran-domains", raw_iran_domains)
     pruned_iran_domains = prune_subdomains(raw_iran_domains)
