@@ -47,14 +47,14 @@ Including tens of thousands of individual `.ir` domain entries in direct ruleset
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                  1. MACRO SUITE (Comprehensive All-In-One)                            │
+│                                  1. MACRO SUITE (Comprehensive All-In-One)                             │
 ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ • Designed for maximum speed, simplicity, and zero-configuration domestic bypass.                      │
 │ • iran-all-domains       : Pure non-.ir Iranian commercial, tech, and cloud domains (+Enamad, CF-Web). │
 │ • iran-all-domains-lite  : Curated set of high-traffic non-.ir domestic platforms.                     │
-│ • iran-all-ip            : Full aggregated RIPE IPv4/IPv6 country delegations (Supernetted).          │
-│ • iran-all-ads           : Unified domestic banner, SDK, and tracker blocking feed (Contains .ir ads).│
-│ • iran-all-security      : Domestic phishing, banking trojans, and smishing portals (Contains .ir).   │
+│ • iran-all-ip            : Full aggregated RIPE IPv4/IPv6 country delegations (Supernetted).           │
+│ • iran-all-ads           : Unified domestic banner, SDK, and tracker blocking feed (Contains .ir ads). │
+│ • iran-all-security      : Domestic phishing, banking trojans, and smishing portals (Contains .ir).    │
 │ • iran-all-apps          : Native Android package names and desktop process names.                     │
 │ • iran-app-exceptions    : Dedicated classical ruleset allowing domestic app analytics (Metrix, etc.). │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -70,10 +70,10 @@ Including tens of thousands of individual `.ir` domain entries in direct ruleset
 │ • iran-modular-media     : Non-.ir VOD platforms, Aparat, Filimo, Telewebion, and broadcasters.        │
 │ • iran-modular-gaming    : Domestic game matchmaking, Radar Game subnets, and low-latency servers.     │
 │ • iran-modular-download  : Non-.ir software mirrors, Soft98, and Mirava Iranian Linux mirrors.         │
-│ • iran-modular-cloud     : Domestic cloud datacenters (ArvanCloud, Derak, ParsPack) IP-CIDRs.         │
-│ • iran-modular-isp       : Direct domestic ISP infrastructure subnets (MCI, Irancell, Shatel, etc.).  │
-│ • iran-modular-gambling  : Domestic online casinos, betting networks, and illegal payment scripts.    │
-│ • iran-modular-other     : The mathematical remainder set (+100k Enamad shops, Startups, CF-Web).     │
+│ • iran-modular-cloud     : Domestic cloud datacenters (ArvanCloud, Derak, ParsPack) IP-CIDRs.          │
+│ • iran-modular-isp       : Direct domestic ISP infrastructure subnets (MCI, Irancell, Shatel, etc.).   │
+│ • iran-modular-gambling  : Domestic online casinos, betting networks, and illegal payment scripts.     │
+│ • iran-modular-other     : The mathematical remainder set (+100k Enamad shops, Startups, CF-Web).      │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
