@@ -90,7 +90,7 @@ $$\text{banking} \cap \text{gov} \cap \text{media} \cap \text{gaming} \cap \text
 
 ## ⚡ Clash Verge Merge Scripts (JavaScript Runtime)
 
-This repository includes **three specialized production-hardened JavaScript merge processors** in the root directory for **Clash Verge Rev**, **Mihomo Party**, and **FlClash**. All scripts feature native integration with the **[HaGeZi MRS Blocklists](https://github.com/Erfan4700/HaGeZi_BlockLists_mrs_format)**, automated domestic DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak suppression.
+This repository includes **three specialized production-hardened JavaScript merge processors** in the root directory for **Clash Verge Rev**, **Mihomo Party**, and **FlClash**. All scripts feature native integration with the **[HaGeZi_BlockLists_Compiled_format](https://github.com/Erfan4700/HaGeZi_BlockLists_Compiled_format)**, automated domestic DNS policy injection, zero-latency domestic white-listing, and UDP/QUIC leak suppression.
 
 ```text
 ├── clash-verge-merge-Macro.js       # [Ultra-Light] Full Macro: Iran Macro + HaGeZi Macro Bundles (Lowest RAM/CPU)
